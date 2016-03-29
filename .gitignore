@@ -60,3 +60,10 @@ target/
 
 #Ipython Notebook
 .ipynb_checkpoints
+
+
+*.swp
+ENV
+data/
+*.sqlite.db
+luigi-state.pickle
