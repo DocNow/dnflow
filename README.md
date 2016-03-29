@@ -17,18 +17,18 @@ added on.
 Assuming you either have an activated virtualenv or similar sandbox,
 install the requirements first:
 ```
-    % pip install -r requirements
+% pip install -r requirements
 ```
 
 Start the `luigid` central scheduler, best done in another terminal:
 ```
-    % luigid
+% luigid
 ```
 
 Finally, run the following to kick it off (substituting a search term 
 of interest):
 ```
-    % python -m luigi --module test RunFlow --term lahoreblast
+% python -m luigi --module test RunFlow --term lahoreblast
 ```
 
 It may take a moment to execute the search, which will require repeated
