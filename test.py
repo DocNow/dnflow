@@ -12,9 +12,10 @@ import time
 from urllib.parse import urlparse
 
 import luigi
+import requests
 import twarc
 
-logging.getLogger().setLevel(logging.WARN)
+logging.getLogger().setLevel(logging.DEBUG)
 
 
 def time_hash(digits=6):
@@ -49,44 +50,38 @@ class TestTask(luigi.Task):
 
 
 class FetchTweets(luigi.Task, Twarcy):
-    date_minute = luigi.Parameter()
+    name = luigi.Parameter()
     term = luigi.Parameter()
     lang = luigi.Parameter(default='en')
     count = luigi.IntParameter(default=1000)
 
     def output(self):
-        fname = 'data/%s-tweets.json' % self.date_minute
-        logging.debug('FETCH: writing to local target %s' % fname)
+        fname = 'data/%s-tweets.json' % self.name
         return luigi.LocalTarget(fname)
 
     def run(self):
-        logging.debug('FETCH: fetching tweets')
         i = 0
         tweets = []
-        logging.debug('FETCH: searching for "%s"' % self.term)
         for tweet in self._twarc.search(self.term, lang=self.lang):
             i += 1
             if i > self.count:
-                logging.debug('FETCH: %s hits reached' % self.count)
                 break
             tweets.append(tweet)
 
         with self.output().open('w') as fp_out:
             for tweet in tweets:
                 fp_out.write(json.dumps(tweet) + '\n')
-        logging.debug('FETCH: done writing file')
 
 
 class CountHashtags(luigi.Task):
-    date_minute = luigi.Parameter()
+    name = luigi.Parameter()
     term = luigi.Parameter()
 
     def requires(self):
-        return FetchTweets(date_minute=self.date_minute, term=self.term)
+        return FetchTweets(name=self.name, term=self.term)
 
     def output(self):
         fname = self.input().fn.replace('.json', '-hashtags.json')
-        logging.debug('hashtag count filename is %s' % fname)
         return luigi.LocalTarget(fname)
 
     def run(self):
@@ -101,15 +96,14 @@ class CountHashtags(luigi.Task):
 
 
 class CountUrls(luigi.Task):
-    date_minute = luigi.Parameter()
+    name = luigi.Parameter()
     term = luigi.Parameter()
 
     def requires(self):
-        return FetchTweets(date_minute=self.date_minute, term=self.term)
+        return FetchTweets(name=self.name, term=self.term)
 
     def output(self):
         fname = self.input().fn.replace('.json', '-urls.json')
-        logging.debug('url count filename is %s' % fname)
         return luigi.LocalTarget(fname)
 
     def run(self):
@@ -124,15 +118,14 @@ class CountUrls(luigi.Task):
 
 
 class CountDomains(luigi.Task):
-    date_minute = luigi.Parameter()
+    name = luigi.Parameter()
     term = luigi.Parameter()
 
     def requires(self):
-        return FetchTweets(date_minute=self.date_minute, term=self.term)
+        return FetchTweets(name=self.name, term=self.term)
 
     def output(self):
         fname = self.input().fn.replace('.json', '-domains.json')
-        logging.debug('domain count filename is %s' % fname)
         return luigi.LocalTarget(fname)
 
     def run(self):
@@ -147,15 +140,14 @@ class CountDomains(luigi.Task):
 
 
 class CountMentions(luigi.Task):
-    date_minute = luigi.Parameter()
+    name = luigi.Parameter()
     term = luigi.Parameter()
 
     def requires(self):
-        return FetchTweets(date_minute=self.date_minute, term=self.term)
+        return FetchTweets(name=self.name, term=self.term)
 
     def output(self):
         fname = self.input().fn.replace('.json', '-mentions.json')
-        logging.debug('mention count filename is %s' % fname)
         return luigi.LocalTarget(fname)
 
     def run(self):
@@ -169,13 +161,71 @@ class CountMentions(luigi.Task):
         fp_counts.close()
 
 
-class RunFlow(luigi.Task):
-    date_minute = luigi.Parameter(
-            default=time.strftime(luigi.DateMinuteParameter.date_format))
+class CountMedia(luigi.Task):
+    name = luigi.Parameter()
     term = luigi.Parameter()
 
     def requires(self):
-        return CountHashtags(date_minute=self.date_minute, term=self.term), \
-            CountUrls(date_minute=self.date_minute, term=self.term), \
-            CountDomains(date_minute=self.date_minute, term=self.term), \
-            CountMentions(date_minute=self.date_minute, term=self.term)
+        return FetchTweets(name=self.name, term=self.term)
+
+    def output(self):
+        fname = self.input().fn.replace('.json', '-media.json')
+        return luigi.LocalTarget(fname)
+
+    def run(self):
+        c = Counter()
+        fp_counts = self.output().open('w')
+        for tweet_str in self.input().open('r'):
+            tweet = json.loads(tweet_str)
+            c.update([m['media_url']
+                     for m in tweet['entities'].get('media', [])
+                     if m['type'] == 'photo'])
+        json.dump(c, fp_counts, sort_keys=True, indent=2)
+        fp_counts.close()
+
+
+class FetchMedia(luigi.Task):
+    name = luigi.Parameter()
+    term = luigi.Parameter()
+    media_files = []
+
+    def requires(self):
+        return CountMedia(name=self.name, term=self.term)
+
+    def run(self):
+        dirname = 'data/%s-media' % self.name
+        os.makedirs(dirname, exist_ok=True)
+        # lots of hits to same server, so let requests pool connections
+        session = requests.Session()
+        media = json.load(self.input().open('r'))
+
+        for url, count in media.items():
+            parsed_url = urlparse(url)
+            fname = parsed_url.path.split('/')[-1]
+            if len(fname) == 0:
+                continue
+            self.media_files.append('%s/%s' % (dirname, fname))
+            r = session.get(url)
+            if r.ok:
+                with open('%s/%s' % (dirname, fname), 'wb') as media_file:
+                    media_file.write(r.content)
+
+    def output(self):
+        # ensure only one successful fetch for each url
+        # unless FetchTweets is called again with a new hash
+        return [luigi.LocalTarget(fname) for fname in self.media_files]
+
+
+class RunFlow(luigi.Task):
+    name = time_hash()
+    term = luigi.Parameter()
+    # lang = luigi.Parameter(default='en')
+    # count = luigi.IntParameter(default=1000)
+
+    def requires(self):
+        return CountHashtags(name=self.name, term=self.term), \
+            CountUrls(name=self.name, term=self.term), \
+            CountDomains(name=self.name, term=self.term), \
+            CountMentions(name=self.name, term=self.term), \
+            CountMedia(name=self.name, term=self.term), \
+            FetchMedia(name=self.name, term=self.term)

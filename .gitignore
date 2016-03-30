@@ -67,3 +67,4 @@ ENV
 data/
 *.sqlite.db
 luigi-state.pickle
+.DS_Store
