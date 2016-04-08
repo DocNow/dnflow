@@ -25,7 +25,10 @@ def time_hash(digits=6):
     """Generate an arbitrary hash based on the current time for filenames."""
     hash = hashlib.sha1()
     hash.update(str(time.time()).encode())
-    return hash.hexdigest()[:digits]
+    t = time.localtime()
+    dt = '%s%02d%02d%02d%02d' % (t.tm_year, t.tm_mon, t.tm_mday,
+                                 t.tm_hour, t.tm_min)
+    return '%s-%s' % (dt, hash.hexdigest()[:digits])
 
 
 def localstrftime():
