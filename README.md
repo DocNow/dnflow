@@ -8,11 +8,11 @@ Uses [Luigi](http://luigi.readthedocs.org/) for workflow automation.
 
 ## running it for yourself
 
-The current `test.py` is set up to collect a handful of tweets based on
-a search, then execute a series of counts against it.  This will result
-in one data file (the source tweets) and several count files (with the
-same name under `data/` but with extensions like `-urls`, `-hashtags`
-added on.
+The current `summarize.py` is set up to collect a handful of tweets
+based on a search, then execute a series of counts against it.  This
+will result in one data file (the source tweets) and several count
+files (with the same name under `data/` but with extensions like
+`-urls`, `-hashtags` added on.
 
 Assuming you either have an activated virtualenv or similar sandbox,
 install the requirements first:
@@ -28,7 +28,7 @@ Start the `luigid` central scheduler, best done in another terminal:
 Finally, run the following to kick it off (substituting a search term 
 of interest):
 ```
-% python -m luigi --module test RunFlow --term lahoreblast
+% python -m luigi --module summarize RunFlow --term lahoreblast
 ```
 
 It may take a moment to execute the search, which will require repeated
