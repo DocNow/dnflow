@@ -12,11 +12,12 @@ import os
 import time
 from urllib.parse import urlparse
 
+from jinja2 import Environment, PackageLoader
 import luigi
 import requests
 import twarc
 
-logging.getLogger().setLevel(logging.WARN)
+logging.getLogger().setLevel(logging.DEBUG)
 
 media_files = []
 
@@ -59,7 +60,7 @@ class FetchTweets(luigi.Task, Twarcy):
     name = luigi.Parameter()
     term = luigi.Parameter()
     lang = luigi.Parameter(default='en')
-    count = luigi.IntParameter(default=2000)
+    count = luigi.IntParameter(default=1000)
 
     def output(self):
         fname = 'data/%s/tweets.json' % self.name
@@ -264,10 +265,14 @@ class CountMedia(luigi.Task):
 class FetchMedia(luigi.Task):
     name = luigi.Parameter()
     term = luigi.Parameter()
-    is_complete = False
 
     def requires(self):
         return CountMedia(name=self.name, term=self.term)
+
+    def output(self):
+        # ensure only one successful fetch for each url
+        # unless FetchTweets is called again with a new hash
+        return [luigi.LocalTarget(fname) for fname in media_files]
 
     def run(self):
         dirname = 'data/%s/media' % self.name
@@ -281,30 +286,71 @@ class FetchMedia(luigi.Task):
                 fname = parsed_url.path.split('/')[-1]
                 if len(fname) == 0:
                     continue
-                media_files.append('%s/%s' % (dirname, fname))
                 r = session.get(row['url'])
                 if r.ok:
                     with open('%s/%s' % (dirname, fname), 'wb') as media_file:
                         media_file.write(r.content)
-            self.is_complete = True
+
+
+class SummaryHTML(luigi.Task):
+    name = luigi.Parameter()
+    term = luigi.Parameter()
+
+    def requires(self):
+        return FetchTweets(name=self.name, term=self.term)
 
     def output(self):
-        # ensure only one successful fetch for each url
-        # unless FetchTweets is called again with a new hash
-        return [luigi.LocalTarget(fname) for fname in media_files]
+        fname = 'data/%s/summary.html' % self.name
+        return luigi.LocalTarget(fname)
 
-    def complete(self):
-        return self.is_complete
+    def run(self):
+        env = Environment(loader=PackageLoader('web'))
+        t = env.get_template('summary.html')
+        title = 'Summary for search "%s"' % self.term
+        t.stream(title=title).dump(self.output().fn)
+
+
+class SummaryJSON(luigi.Task):
+    name = luigi.Parameter()
+    term = luigi.Parameter()
+
+    def requires(self):
+        return FetchTweets(name=self.name, term=self.term)
+
+    def output(self):
+        fname = self.input().fn.replace('tweets.json', 'summary.json')
+        return luigi.LocalTarget(fname)
+
+    def run(self):
+        c = Counter()
+        num_tweets = 0
+        for tweet_str in self.input().open('r'):
+            num_tweets += 1
+            tweet = json.loads(tweet_str)
+            c.update([m['media_url']
+                     for m in tweet['entities'].get('media', [])
+                     if m['type'] == 'photo'])
+        summary = {
+                'path': self.name,
+                'date': time.strftime('%Y-%m-%d %H:%M:%S',
+                                      time.localtime()),
+                'num_tweets': num_tweets,
+                'term': self.term
+                }
+        with self.output().open('w') as fp_summary:
+            json.dump(summary, fp_summary)
 
 
 class RunFlow(luigi.Task):
     name = time_hash()
     term = luigi.Parameter()
     # lang = luigi.Parameter(default='en')
-    # count = luigi.IntParameter(default=1000)
+    # count = luigi.IntParameter(default=200)
 
     def requires(self):
         return CountHashtags(name=self.name, term=self.term), \
+            SummaryHTML(name=self.name, term=self.term), \
+            SummaryJSON(name=self.name, term=self.term), \
             EdgelistHashtags(name=self.name, term=self.term), \
             CountUrls(name=self.name, term=self.term), \
             CountDomains(name=self.name, term=self.term), \

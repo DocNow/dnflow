@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+
+{% block style_css_extra %}
+.bar {
+    fill: steelblue;
+}
+
+.axis {
+    font: 11px sans-serif;
+}
+
+.axis path, line {
+    fill: none;
+    stroke: #000000;
+    shape-rendering: crispEdges;
+}
+
+.x.axis path {
+    display: none;
+}
+{% endblock style_css_extra %}
+
+{% block javascript_extra %}
+var summary;
+
+d3.json("summary.json", function(e, summary) {
+    if (e) return console.warn(e);
+    d3.select('#num_tweets').text(summary.num_tweets);
+    d3.select('#date').text(summary.date);
+});
+
+var margin = {t: 20, r: 30, b: 120, l: 40};
+var width = 480 - margin.l - margin.r;
+var height = 480 - margin.t - margin.b;
+
+var x = d3.scale.ordinal().range([0, width])
+    .rangeRoundBands([0, width], .1);
+var y = d3.scale.linear().range([height, 0]);
+
+var x_axis = d3.svg.axis().scale(x).orient("bottom");
+var y_axis = d3.svg.axis().scale(y).orient("left")
+    .tickFormat(d3.format("d"));
+
+var counts;
+d3.csv("count-hashtags.csv", function(e, csv) {
+    if (e) return console.warn(e);
+    counts = csv;
+    counts.sort(function(a, b) { return b.count - a.count; });
+    counts = counts.slice(0, 25);
+    chart("hashtags", counts, "hashtag");
+});
+d3.csv("count-mentions.csv", function(e, csv) {
+    if (e) return console.warn(e);
+    counts = csv;
+    counts.sort(function(a, b) { return b.count - a.count; });
+    counts = counts.slice(0, 25);
+    chart("mentions", counts, "screen_name");
+});
+
+function chart(id, data, fieldname) {
+    x.domain(counts.map(function(d) { return d[fieldname]; }));
+    y.domain([0, d3.max(counts, function(d) { return parseInt(d.count); })]);
+
+    var svg = d3.select("#" + id).append("svg")
+        .attr("width", width + margin.l + margin.r)
+        .attr("height", height + margin.t + margin.b)
+      .append("g")
+        .attr("transform", "translate(" + margin.l + "," + margin.t +
+                ")");
+
+    svg.append("g")
+        .attr("class", "x axis")
+        .attr("transform", "translate(0," + height + ")")
+        .call(x_axis)
+        .selectAll("text")
+            .style("text-anchor", "end")
+            .attr("dx", "-1em")
+            .attr("dy", ".15em")
+            .attr("transform", "rotate(-65)");
+
+    svg.append("g")
+        .attr("class", "y axis")
+        .call(y_axis);
+
+    svg.selectAll(".bar")
+        .data(data)
+      .enter().append("rect")
+        .attr("class", "bar")
+        .attr("x", function(d) { return x(d[fieldname]); })
+        .attr("width", x.rangeBand())
+        .attr("y", function(d) { return y(d.count); })
+        .attr("height", function(d) { return height - y(d.count); });
+};
+{% endblock javascript_extra %}
+
+{% block content %}
+<div class="row">
+    <h2 class="item">
+        <span id='num_tweets'></span>
+        tweets collected on
+        <span id='date'></span>
+    </h2>
+</div>
+<div class="row">
+    <div id="hashtags" class="item">
+        <h3>Popular hashtags</h3>
+    </div>
+    <div id="mentions" class="item">
+        <h3>Most mentioned users</h3>
+    </div>
+</div>
+{% endblock content %}

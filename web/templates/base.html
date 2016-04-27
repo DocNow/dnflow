@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>{{ title }}</title>
+        {% block style_css %}
+        <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/normalize/4.1.1/normalize.min.css"
+        />
+        <style>
+.container {
+    margin: 1em;
+    border: none; 
+}
+
+.row {
+    display: flex;
+}
+
+.item {
+    flex: 1;
+    margin: 1em;
+    border: none;
+}
+        {% endblock style_css %}
+        {% block style_css_extra %}
+        {% endblock style_css_extra %}
+        </style>
+        {% block javascript %}
+        <script src="https://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+        {% endblock javascript %}
+        <script>
+        {% block javascript_extra %}
+        {% endblock javascript_extra %}
+        </script>
+    </head>
+
+    <body>
+        <div class='container'>
+            <div class='row'>
+                <h1 class='item'>{{ title }}</h1>
+            </div>
+{% block content %}
+{% endblock content %}
+        </div>
+    </body>
+</html>
