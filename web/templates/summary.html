@@ -41,25 +41,60 @@ var x_axis = d3.svg.axis().scale(x).orient("bottom");
 var y_axis = d3.svg.axis().scale(y).orient("left")
     .tickFormat(d3.format("d"));
 
-var counts;
-d3.csv("count-hashtags.csv", function(e, csv) {
+var csvfiles = [
+    ["count-hashtags.csv", "hashtags", "hashtag"],
+    ["count-mentions.csv", "mentions", "screen_name"],
+    ["count-domains.csv", "domains", "url"],
+    ["count-urls.csv", "urls", "url"]
+    ];
+
+/* FIXME: this doesn't work.  Yields the following on console:
+before csv: hashtags
+before csv: mentions
+before csv: domains
+before csv: urls
+in csv: urls
+in csv: urls
+in csv: urls
+in csv: urls
+
+for (i in csvfiles) {
+    var csvfile = csvfiles[i];
+    console.debug("before csv: " + csvfile[1]);
+    d3.csv(csvfile[0], function(e, data) {
+        if (e) return console.warn(e);
+        console.debug("in csv: " + csvfile[1]);
+        chart(csvfile[1], data, csvfile[2]);
+    });
+};
+*/
+
+d3.csv("count-hashtags.csv", function(e, data) {
     if (e) return console.warn(e);
-    counts = csv;
-    counts.sort(function(a, b) { return b.count - a.count; });
-    counts = counts.slice(0, 25);
-    chart("hashtags", counts, "hashtag");
+    chart("hashtags", data, "hashtag");
 });
-d3.csv("count-mentions.csv", function(e, csv) {
+
+d3.csv("count-mentions.csv", function(e, data) {
     if (e) return console.warn(e);
-    counts = csv;
-    counts.sort(function(a, b) { return b.count - a.count; });
-    counts = counts.slice(0, 25);
-    chart("mentions", counts, "screen_name");
+    chart("mentions", data, "screen_name");
+});
+
+d3.csv("count-domains.csv", function(e, data) {
+    if (e) return console.warn(e);
+    chart("domains", data, "url");
+});
+
+d3.csv("count-urls.csv", function(e, data) {
+    if (e) return console.warn(e);
+    chart("urls", data, "url");
 });
 
 function chart(id, data, fieldname) {
-    x.domain(counts.map(function(d) { return d[fieldname]; }));
-    y.domain([0, d3.max(counts, function(d) { return parseInt(d.count); })]);
+    data.sort(function(a, b) { return b.count - a.count; });
+    data = data.slice(0, 25);
+
+    x.domain(data.map(function(d) { return d[fieldname]; }));
+    y.domain([0, d3.max(data, function(d) { return parseInt(d.count); })]);
 
     var svg = d3.select("#" + id).append("svg")
         .attr("width", width + margin.l + margin.r)
@@ -107,6 +142,14 @@ function chart(id, data, fieldname) {
     </div>
     <div id="mentions" class="item">
         <h3>Most mentioned users</h3>
+    </div>
+</div>
+<div class="row">
+    <div id="domains" class="item">
+        <h3>Common domains</h3>
+    </div>
+    <div id="urls" class="item">
+        <h3>Most referenced URLs</h3>
     </div>
 </div>
 {% endblock content %}
