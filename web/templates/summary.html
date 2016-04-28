@@ -5,8 +5,12 @@
     fill: steelblue;
 }
 
+.bar:hover {
+    fill: gold;
+}
+
 .axis {
-    font: 11px sans-serif;
+    font: 12px sans-serif;
 }
 
 .axis path, line {
@@ -25,7 +29,8 @@ var summary;
 
 d3.json("summary.json", function(e, summary) {
     if (e) return console.warn(e);
-    d3.select('#num_tweets').text(summary.num_tweets);
+    var num_tweets = parseInt(summary.num_tweets);
+    d3.select('#num_tweets').text(num_tweets.toLocaleString());
     d3.select('#date').text(summary.date);
 });
 
@@ -41,12 +46,6 @@ var x_axis = d3.svg.axis().scale(x).orient("bottom");
 var y_axis = d3.svg.axis().scale(y).orient("left")
     .tickFormat(d3.format("d"));
 
-var csvfiles = [
-    ["count-hashtags.csv", "hashtags", "hashtag"],
-    ["count-mentions.csv", "mentions", "screen_name"],
-    ["count-domains.csv", "domains", "url"],
-    ["count-urls.csv", "urls", "url"]
-    ];
 
 /* FIXME: this doesn't work.  Yields the following on console:
 before csv: hashtags
@@ -57,6 +56,13 @@ in csv: urls
 in csv: urls
 in csv: urls
 in csv: urls
+
+var csvfiles = [
+    ["count-hashtags.csv", "hashtags", "hashtag"],
+    ["count-mentions.csv", "mentions", "screen_name"],
+    ["count-domains.csv", "domains", "url"],
+    ["count-urls.csv", "urls", "url"]
+    ];
 
 for (i in csvfiles) {
     var csvfile = csvfiles[i];
@@ -89,6 +95,30 @@ d3.csv("count-urls.csv", function(e, data) {
     chart("urls", data, "url");
 });
 
+d3.csv("count-media.csv", function(e, data) {
+    if (e) return console.warn(e);
+    data.sort(function(a, b) { return b.count - a.count; });
+    var media_counts = data.slice(0, 10);
+    d3.csv("count-media.csv", function(e, data) {
+        if (e) return console.warn(e);
+            data.sort(function(a, b) { return b.count - a.count; });
+                var media_counts = data.slice(0, 10);
+                d3.select("#media").selectAll(".image")
+                    .data(media_counts)
+                  .enter()
+                    .append("div")
+                        .attr("class", "row")
+                    .append("div")
+                        .attr("class", "item")
+                        .text(function(d) { return d.count; })
+                    .append("img")
+                        .attr("src", function(d) {
+                            var index = d.url.lastIndexOf("/") + 1;
+                            return "media/" + d.url.substr(index);
+                        });
+    });
+});
+
 function chart(id, data, fieldname) {
     data.sort(function(a, b) { return b.count - a.count; });
     data = data.slice(0, 25);
@@ -100,8 +130,7 @@ function chart(id, data, fieldname) {
         .attr("width", width + margin.l + margin.r)
         .attr("height", height + margin.t + margin.b)
       .append("g")
-        .attr("transform", "translate(" + margin.l + "," + margin.t +
-                ")");
+        .attr("transform", "translate(" + margin.l + "," + margin.t + ")");
 
     svg.append("g")
         .attr("class", "x axis")
@@ -126,6 +155,7 @@ function chart(id, data, fieldname) {
         .attr("y", function(d) { return y(d.count); })
         .attr("height", function(d) { return height - y(d.count); });
 };
+
 {% endblock javascript_extra %}
 
 {% block content %}
@@ -152,4 +182,26 @@ function chart(id, data, fieldname) {
         <h3>Most referenced URLs</h3>
     </div>
 </div>
+<div class="row">
+    <div id="media" class="item">
+        <h3>Common images</h3>
+    </div>
+</div>
+<div class="row">
+    <div id="rawdata" class="item">
+        <h3>Raw data</h3>
+        <p>
+        Download the raw data behind these charts.
+        </p>
+        <ul>
+            <li><a href='tweets.json'>tweets.json</a></li>
+            <li><a href='count-hashtags.csv'>count-hashtags.csv</a></li>
+            <li><a href='count-mentions.csv'>count-mentions.csv</a></li>
+            <li><a href='count-domains.csv'>count-domains.csv</a></li>
+            <li><a href='count-urls.csv'>count-urls.csv</a></li>
+            <li><a href='count-media.csv'>count-media.csv</a></li>
+        </ul>
+    </div>
+</div>
+
 {% endblock content %}

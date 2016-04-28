@@ -60,7 +60,7 @@ class FetchTweets(luigi.Task, Twarcy):
     name = luigi.Parameter()
     term = luigi.Parameter()
     lang = luigi.Parameter(default='en')
-    count = luigi.IntParameter(default=1000)
+    count = luigi.IntParameter(default=400)
 
     def output(self):
         fname = 'data/%s/tweets.json' % self.name
