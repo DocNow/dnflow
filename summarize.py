@@ -12,14 +12,16 @@ import os
 import time
 from urllib.parse import urlparse
 
+import imagehash
 from jinja2 import Environment, PackageLoader
 import luigi
+import networkx as nx
+from PIL import Image
 import requests
+
 import twarc
 
 logging.getLogger().setLevel(logging.DEBUG)
-
-media_files = []
 
 
 def time_hash(digits=6):
@@ -34,6 +36,24 @@ def time_hash(digits=6):
 
 def localstrftime():
     return time.strftime('%Y-%m-%dT%H%M', time.localtime())
+
+
+def url_filename(url):
+    """Given a full URL, return just the filename after the last slash."""
+    parsed_url = urlparse(url)
+    fname = parsed_url.path.split('/')[-1]
+    return fname
+
+
+def generate_md5(fname, block_size=2**16):
+    m = hashlib.md5()
+    with open(fname, 'rb') as f:
+        while True:
+            buf = f.read(block_size)
+            if not buf:
+                break
+            m.update(buf)
+    return m.hexdigest()
 
 
 class Twarcy(object):
@@ -60,7 +80,7 @@ class FetchTweets(luigi.Task, Twarcy):
     name = luigi.Parameter()
     term = luigi.Parameter()
     lang = luigi.Parameter(default='en')
-    count = luigi.IntParameter(default=400)
+    count = luigi.IntParameter(default=5000)
 
     def output(self):
         fname = 'data/%s/tweets.json' % self.name
@@ -256,10 +276,11 @@ class CountMedia(luigi.Task):
         with self.output().open('w') as fp_counts:
             writer = csv.DictWriter(fp_counts, delimiter=',',
                                     quoting=csv.QUOTE_MINIMAL,
-                                    fieldnames=['url', 'count'])
+                                    fieldnames=['url', 'file', 'count'])
             writer.writeheader()
             for url, count in c.items():
-                writer.writerow({'url': url, 'count': count})
+                writer.writerow({'url': url, 'file': url_filename(url),
+                                 'count': count})
 
 
 class FetchMedia(luigi.Task):
@@ -272,24 +293,86 @@ class FetchMedia(luigi.Task):
     def output(self):
         # ensure only one successful fetch for each url
         # unless FetchTweets is called again with a new hash
-        return [luigi.LocalTarget(fname) for fname in media_files]
+        fname = self.input().fn.replace('count-media.csv',
+                                        'media-checksums-md5.txt')
+        return luigi.LocalTarget(fname)
 
     def run(self):
         dirname = 'data/%s/media' % self.name
         os.makedirs(dirname, exist_ok=True)
-        # lots of hits to same server, so let requests pool connections
+        # lots of hits to same server, so pool connections
+        hashes = []
         session = requests.Session()
         with self.input().open('r') as csvfile:
             reader = csv.DictReader(csvfile, delimiter=',')
             for row in reader:
-                parsed_url = urlparse(row['url'])
-                fname = parsed_url.path.split('/')[-1]
+                fname = url_filename(row['url'])
                 if len(fname) == 0:
                     continue
                 r = session.get(row['url'])
                 if r.ok:
-                    with open('%s/%s' % (dirname, fname), 'wb') as media_file:
+                    full_name = '%s/%s' % (dirname, fname)
+                    with open(full_name, 'wb') as media_file:
                         media_file.write(r.content)
+                    md5 = generate_md5(full_name)
+        with self.output().open('w') as f:
+            for md5, h in hashes:
+                f.write('%s %s\n' % (md5, h))
+
+
+class MatchMedia(luigi.Task):
+    name = luigi.Parameter()
+    term = luigi.Parameter()
+
+    def requires(self):
+        return FetchMedia(name=self.name, term=self.term)
+
+    def output(self):
+        fname = self.input().fn.replace('media-checksums-md5.txt',
+                                        'media-graph.json')
+        return luigi.LocalTarget(fname)
+
+    def run(self):
+        files = sorted(os.listdir('data/%s/media' % self.name))
+        hashes = {}
+        matches = []
+        g = nx.Graph()
+        for i in range(len(files)):
+            f = files[i]
+            fn = 'data/%s/media/%s' % (self.name, f)
+            ahash = imagehash.average_hash(Image.open(fn))
+            dhash = imagehash.dhash(Image.open(fn))
+            phash = imagehash.phash(Image.open(fn))
+            hashes[f] = {'ahash': ahash, 'dhash': dhash, 'phash': phash}
+            for j in range(0, i):
+                f2name = files[j]
+                f2 = hashes[f2name]
+                sumhash = sum([ahash - f2['ahash'],
+                               dhash - f2['dhash'],
+                               phash - f2['phash']])
+                if sumhash <= 40:
+                    matches.append([f, files[j],
+                                    ahash - f2['ahash'],
+                                    dhash - f2['dhash'],
+                                    phash - f2['phash'],
+                                    sumhash])
+                    g.add_edge(f, f2name)
+        with self.output().open('w') as fp_graph:
+            components = list(nx.connected_components(g))
+            # Note: sets are not JSON serializable
+            d = []
+            for s in components:
+                d.append(list(s))
+            logging.debug(' - = - = - = GRAPH HERE - = - = - = -')
+            logging.debug(d)
+            json.dump(d, fp_graph, indent=2)
+        # with self.output().open('w') as fp:
+        #    writer = csv.writer(fp, delimiter=',',
+        #                        quoting=csv.QUOTE_MINIMAL)
+        #    writer.writerow(['file1', 'file2', 'ahash', 'dhash',
+        #                     'phash', 'sumhash'])
+        #    for match in matches:
+        #        writer.writerow(match)
 
 
 class SummaryHTML(luigi.Task):
@@ -356,4 +439,4 @@ class RunFlow(luigi.Task):
             CountDomains(name=self.name, term=self.term), \
             CountMentions(name=self.name, term=self.term), \
             EdgelistMentions(name=self.name, term=self.term), \
-            FetchMedia(name=self.name, term=self.term)
+            MatchMedia(name=self.name, term=self.term)

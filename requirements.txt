@@ -1,5 +1,7 @@
+imagehash
 Jinja2
 luigi
+networkx
 sqlalchemy
 twarc
 tweepy

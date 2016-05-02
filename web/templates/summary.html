@@ -95,29 +95,74 @@ d3.csv("count-urls.csv", function(e, data) {
     chart("urls", data, "url");
 });
 
+var media_counts = {};
 d3.csv("count-media.csv", function(e, data) {
     if (e) return console.warn(e);
+    for (i in data) {
+        media_counts[data[i]["file"]] = data[i]["count"];
+    };
     data.sort(function(a, b) { return b.count - a.count; });
-    var media_counts = data.slice(0, 10);
-    d3.csv("count-media.csv", function(e, data) {
-        if (e) return console.warn(e);
-            data.sort(function(a, b) { return b.count - a.count; });
-                var media_counts = data.slice(0, 10);
-                d3.select("#media").selectAll(".image")
-                    .data(media_counts)
-                  .enter()
-                    .append("div")
-                        .attr("class", "row")
-                    .append("div")
-                        .attr("class", "item")
-                        .text(function(d) { return d.count; })
-                    .append("img")
-                        .attr("src", function(d) {
-                            var index = d.url.lastIndexOf("/") + 1;
-                            return "media/" + d.url.substr(index);
-                        });
-    });
+    top_ten = data.slice(0, 10);
+    var media_row = d3.select("#media")
+        .append("div")
+            .attr("class", "image row");
+
+    media_row.selectAll(".image .row")
+        .data(top_ten)
+      .enter()
+        .append("div")
+            .attr("class", "item")
+            .text(function(d) { return d.count; })
+        .append("a")
+            .attr("href", function(d) { return "media/" + d.file; })
+        .append("img")
+            .attr("width", "100")
+            .attr("src", function(d) { return "media/" + d.file; });
 });
+
+var images;
+d3.json("media-graph.json", function(e, data) {
+    if (e) return console.warn(e);
+    // for each set
+    for (i in data) {
+        images = data[i]
+        images.sort(function(a, b) { 
+            return media_counts[b] - media_counts[a];
+        });
+        total = d3.sum(images, function(d) { return media_counts[d]; });
+        // render one representative image large
+        var match_row = d3.select("#media-matches")
+            .append("div")
+                .attr("class", "match row");
+        match_row.append("div")
+            .append("p")
+                .text(total + " total, " + media_counts[images[0]])
+            .append("a")
+                .attr("href", function(d) { return "media/" + images[0]; })
+            .append("img")
+                .attr("width", "300")
+                .attr("src", "media/" + images[0]);
+
+        // skip the first one we just showed
+        images.shift();
+
+        // render each image small
+        match_row.selectAll(".row .match")
+            .append("div")
+                .attr("class", "item matches")
+            .data(images)
+          .enter()
+            .append("div")
+            .append("p")
+                .text(function(d) { return media_counts[d]; })
+            .append("a")
+                .attr("href", function(d) { return "media/" + d; })
+            .append("img")
+                .attr("width", "128")
+                .attr("src", function(d) { return "media/" + d; });
+    };
+});
+
 
 function chart(id, data, fieldname) {
     data.sort(function(a, b) { return b.count - a.count; });
@@ -185,6 +230,11 @@ function chart(id, data, fieldname) {
 <div class="row">
     <div id="media" class="item">
         <h3>Common images</h3>
+    </div>
+</div>
+<div class="row">
+    <div id="media-matches" class="item">
+        <h3>Matching images</h3>
     </div>
 </div>
 <div class="row">
