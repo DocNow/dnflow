@@ -62,7 +62,17 @@ terminal:
  * Start a [Redis Queue](http://python-rq.org/) worker
 
 RQ requires a running instance of Redis and one or more workers, also
-best done in another terminal.  Within your dnflow virtual environment:
+best done in another terminal.  Make sure that your Twitter keys are
+available in your dnflow virtual environment:
+
+```
+export CONSUMER_KEY="BUT, I CAN CHANGE"
+export CONSUMER_SECRET="I CAN CHANGE"
+export ACCESS_TOKEN="I CAN CHANGE"
+export ACCESS_TOKEN_SECRET="I CAN CHANGE"
+```
+
+and then:
 
 ```
 % rq worker
