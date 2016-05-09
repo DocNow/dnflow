@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>hi there</h1>
+
+<h2>search something new</h2>
+<form method='post' action='/new'>
+    terms: <input type='text' name='text' />
+        <input type='submit' value='add' />
+</form>
+
+{% if searches %}
+<ul>
+    {% for search in searches %}
+    <li>{{ search.id }}: 
+            {{ search.text }}
+        {% if search.status -%}
+            , {{ search.status }}
+        {%- endif %}
+        {% if search.date_path -%}
+            , <a href="/summary/{{ search.date_path }}/">{{ search.date_path }}</a>
+        {%- endif %}
+    </li>
+    {% endfor %}
+</ul>
+{% endif %}
+{% endblock content %}

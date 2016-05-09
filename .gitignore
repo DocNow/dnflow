@@ -65,6 +65,6 @@ target/
 *.swp
 ENV
 data/
-*.sqlite.db
+*.sqlite*
 luigi-state.pickle
 .DS_Store

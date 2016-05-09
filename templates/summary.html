@@ -29,6 +29,7 @@ var summary;
 
 d3.json("summary.json", function(e, summary) {
     if (e) return console.warn(e);
+    d3.select('#title').text(summary.term);
     var num_tweets = parseInt(summary.num_tweets);
     d3.select('#num_tweets').text(num_tweets.toLocaleString());
     d3.select('#date').text(summary.date);

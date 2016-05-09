@@ -21,7 +21,12 @@ import requests
 
 import twarc
 
-logging.getLogger().setLevel(logging.DEBUG)
+
+UI_URL = 'http://localhost:5000'
+
+logging.getLogger().setLevel(logging.WARN)
+logging.getLogger('').setLevel(logging.WARN)
+logging.getLogger('luigi-interface').setLevel(logging.WARN)
 
 
 def time_hash(digits=6):
@@ -56,6 +61,47 @@ def generate_md5(fname, block_size=2**16):
     return m.hexdigest()
 
 
+class EventfulTask(luigi.Task):
+    date_path = luigi.Parameter()
+    term = luigi.Parameter()
+
+    @staticmethod
+    def update_job(jobid=None, date_path=None, status=None):
+        data = {}
+        if jobid:
+            data['job_id'] = jobid
+        if date_path:
+            data['date_path'] = date_path
+        if status:
+            data['status'] = status
+        r = requests.put('%s/job/' % UI_URL, data=data)
+        if r.status_code in [200, 302]:
+            return True
+        return False
+
+    @luigi.Task.event_handler(luigi.Event.START)
+    def start(task):
+        print('### START ###: %s' % task)
+        EventfulTask.update_job(date_path=task.date_path,
+                                status='START: %s' % task.task_family)
+
+    @luigi.Task.event_handler(luigi.Event.SUCCESS)
+    def success(task):
+        print('### SUCCESS ###: %s' % task)
+        EventfulTask.update_job(date_path=task.date_path,
+                                status='START: %s' % task.task_family)
+
+    @luigi.Task.event_handler(luigi.Event.PROCESSING_TIME)
+    def processing_time(task, processing_time):
+        print('### PROCESSING TIME ###: %s, %s' % (task, processing_time))
+
+    @luigi.Task.event_handler(luigi.Event.FAILURE)
+    def failure(task, exc):
+        print('### FAILURE ###: %s, %s' % (task, exc))
+        EventfulTask.update_job(date_path=task.date_path,
+                                status='START: %s' % task.task_family)
+
+
 class Twarcy(object):
 
     _c_key = os.environ.get('CONSUMER_KEY')
@@ -68,22 +114,13 @@ class Twarcy(object):
                          access_token_secret=_a_token_secret)
 
 
-class TestTask(luigi.Task):
-    x = luigi.IntParameter()
-    y = luigi.IntParameter()
+class FetchTweets(EventfulTask, Twarcy):
 
-    def run(self):
-        print(self.x + self.y)
-
-
-class FetchTweets(luigi.Task, Twarcy):
-    name = luigi.Parameter()
-    term = luigi.Parameter()
     lang = luigi.Parameter(default='en')
-    count = luigi.IntParameter(default=5000)
+    count = luigi.IntParameter(default=1000)
 
     def output(self):
-        fname = 'data/%s/tweets.json' % self.name
+        fname = 'data/%s/tweets.json' % self.date_path
         return luigi.LocalTarget(fname)
 
     def run(self):
@@ -100,12 +137,10 @@ class FetchTweets(luigi.Task, Twarcy):
                 fp_out.write(json.dumps(tweet) + '\n')
 
 
-class CountHashtags(luigi.Task):
-    name = luigi.Parameter()
-    term = luigi.Parameter()
+class CountHashtags(EventfulTask):
 
     def requires(self):
-        return FetchTweets(name=self.name, term=self.term)
+        return FetchTweets(date_path=self.date_path, term=self.term)
 
     def output(self):
         fname = self.input().fn.replace('tweets.json', 'count-hashtags.csv')
@@ -126,12 +161,11 @@ class CountHashtags(luigi.Task):
                 writer.writerow({'hashtag': ht, 'count': count})
 
 
-class EdgelistHashtags(luigi.Task):
-    name = luigi.Parameter()
-    term = luigi.Parameter()
+class EdgelistHashtags(EventfulTask):
+    date_path = luigi.Parameter()
 
     def requires(self):
-        return FetchTweets(name=self.name, term=self.term)
+        return FetchTweets(date_path=self.date_path, term=self.term)
 
     def output(self):
         fname = self.input().fn.replace('tweets.json', 'edgelist-hashtags.csv')
@@ -151,12 +185,10 @@ class EdgelistHashtags(luigi.Task):
                                      'hashtag': ht['text'].lower()})
 
 
-class CountUrls(luigi.Task):
-    name = luigi.Parameter()
-    term = luigi.Parameter()
+class CountUrls(EventfulTask):
 
     def requires(self):
-        return FetchTweets(name=self.name, term=self.term)
+        return FetchTweets(date_path=self.date_path, term=self.term)
 
     def output(self):
         fname = self.input().fn.replace('tweets.json', 'count-urls.csv')
@@ -177,12 +209,10 @@ class CountUrls(luigi.Task):
                 writer.writerow({'url': url, 'count': count})
 
 
-class CountDomains(luigi.Task):
-    name = luigi.Parameter()
-    term = luigi.Parameter()
+class CountDomains(EventfulTask):
 
     def requires(self):
-        return FetchTweets(name=self.name, term=self.term)
+        return FetchTweets(date_path=self.date_path, term=self.term)
 
     def output(self):
         fname = self.input().fn.replace('tweets.json', 'count-domains.csv')
@@ -203,12 +233,10 @@ class CountDomains(luigi.Task):
                 writer.writerow({'url': url, 'count': count})
 
 
-class CountMentions(luigi.Task):
-    name = luigi.Parameter()
-    term = luigi.Parameter()
+class CountMentions(EventfulTask):
 
     def requires(self):
-        return FetchTweets(name=self.name, term=self.term)
+        return FetchTweets(date_path=self.date_path, term=self.term)
 
     def output(self):
         fname = self.input().fn.replace('tweets.json', 'count-mentions.csv')
@@ -230,12 +258,10 @@ class CountMentions(luigi.Task):
                                  'count': count})
 
 
-class EdgelistMentions(luigi.Task):
-    name = luigi.Parameter()
-    term = luigi.Parameter()
+class EdgelistMentions(EventfulTask):
 
     def requires(self):
-        return FetchTweets(name=self.name, term=self.term)
+        return FetchTweets(date_path=self.date_path, term=self.term)
 
     def output(self):
         fname = self.input().fn.replace('tweets.json', 'edgelist-mentions.csv')
@@ -255,12 +281,10 @@ class EdgelistMentions(luigi.Task):
                                      'to_user': mention['screen_name']})
 
 
-class CountMedia(luigi.Task):
-    name = luigi.Parameter()
-    term = luigi.Parameter()
+class CountMedia(EventfulTask):
 
     def requires(self):
-        return FetchTweets(name=self.name, term=self.term)
+        return FetchTweets(date_path=self.date_path, term=self.term)
 
     def output(self):
         fname = self.input().fn.replace('tweets.json', 'count-media.csv')
@@ -283,12 +307,10 @@ class CountMedia(luigi.Task):
                                  'count': count})
 
 
-class FetchMedia(luigi.Task):
-    name = luigi.Parameter()
-    term = luigi.Parameter()
+class FetchMedia(EventfulTask):
 
     def requires(self):
-        return CountMedia(name=self.name, term=self.term)
+        return CountMedia(date_path=self.date_path, term=self.term)
 
     def output(self):
         # ensure only one successful fetch for each url
@@ -298,7 +320,7 @@ class FetchMedia(luigi.Task):
         return luigi.LocalTarget(fname)
 
     def run(self):
-        dirname = 'data/%s/media' % self.name
+        dirname = 'data/%s/media' % self.date_path
         os.makedirs(dirname, exist_ok=True)
         # lots of hits to same server, so pool connections
         hashes = []
@@ -320,12 +342,10 @@ class FetchMedia(luigi.Task):
                 f.write('%s %s\n' % (md5, h))
 
 
-class MatchMedia(luigi.Task):
-    name = luigi.Parameter()
-    term = luigi.Parameter()
+class MatchMedia(EventfulTask):
 
     def requires(self):
-        return FetchMedia(name=self.name, term=self.term)
+        return FetchMedia(date_path=self.date_path, term=self.term)
 
     def output(self):
         fname = self.input().fn.replace('media-checksums-md5.txt',
@@ -333,13 +353,13 @@ class MatchMedia(luigi.Task):
         return luigi.LocalTarget(fname)
 
     def run(self):
-        files = sorted(os.listdir('data/%s/media' % self.name))
+        files = sorted(os.listdir('data/%s/media' % self.date_path))
         hashes = {}
         matches = []
         g = nx.Graph()
         for i in range(len(files)):
             f = files[i]
-            fn = 'data/%s/media/%s' % (self.name, f)
+            fn = 'data/%s/media/%s' % (self.date_path, f)
             ahash = imagehash.average_hash(Image.open(fn))
             dhash = imagehash.dhash(Image.open(fn))
             phash = imagehash.phash(Image.open(fn))
@@ -375,15 +395,13 @@ class MatchMedia(luigi.Task):
         #        writer.writerow(match)
 
 
-class SummaryHTML(luigi.Task):
-    name = luigi.Parameter()
-    term = luigi.Parameter()
+class SummaryHTML(EventfulTask):
 
     def requires(self):
-        return FetchTweets(name=self.name, term=self.term)
+        return FetchTweets(date_path=self.date_path, term=self.term)
 
     def output(self):
-        fname = 'data/%s/summary.html' % self.name
+        fname = 'data/%s/summary.html' % self.date_path
         return luigi.LocalTarget(fname)
 
     def run(self):
@@ -393,12 +411,10 @@ class SummaryHTML(luigi.Task):
         t.stream(title=title).dump(self.output().fn)
 
 
-class SummaryJSON(luigi.Task):
-    name = luigi.Parameter()
-    term = luigi.Parameter()
+class SummaryJSON(EventfulTask):
 
     def requires(self):
-        return FetchTweets(name=self.name, term=self.term)
+        return FetchTweets(date_path=self.date_path, term=self.term)
 
     def output(self):
         fname = self.input().fn.replace('tweets.json', 'summary.json')
@@ -414,7 +430,7 @@ class SummaryJSON(luigi.Task):
                      for m in tweet['entities'].get('media', [])
                      if m['type'] == 'photo'])
         summary = {
-                'path': self.name,
+                'path': self.date_path,
                 'date': time.strftime('%Y-%m-%d %H:%M:%S',
                                       time.localtime()),
                 'num_tweets': num_tweets,
@@ -424,19 +440,21 @@ class SummaryJSON(luigi.Task):
             json.dump(summary, fp_summary)
 
 
-class RunFlow(luigi.Task):
-    name = time_hash()
-    term = luigi.Parameter()
+class RunFlow(EventfulTask):
+    jobid = luigi.IntParameter()
+    date_path = time_hash()
     # lang = luigi.Parameter(default='en')
     # count = luigi.IntParameter(default=200)
 
     def requires(self):
-        return CountHashtags(name=self.name, term=self.term), \
-            SummaryHTML(name=self.name, term=self.term), \
-            SummaryJSON(name=self.name, term=self.term), \
-            EdgelistHashtags(name=self.name, term=self.term), \
-            CountUrls(name=self.name, term=self.term), \
-            CountDomains(name=self.name, term=self.term), \
-            CountMentions(name=self.name, term=self.term), \
-            EdgelistMentions(name=self.name, term=self.term), \
-            MatchMedia(name=self.name, term=self.term)
+        EventfulTask.update_job(jobid=self.jobid, date_path=self.date_path)
+        yield CountHashtags(date_path=self.date_path, term=self.term)
+        # yield SummaryHTML(date_path=self.date_path, term=self.term)
+        yield SummaryJSON(date_path=self.date_path, term=self.term)
+        yield EdgelistHashtags(date_path=self.date_path, term=self.term)
+        yield CountUrls(date_path=self.date_path, term=self.term)
+        yield CountDomains(date_path=self.date_path, term=self.term)
+        yield CountMentions(date_path=self.date_path, term=self.term)
+        yield EdgelistMentions(date_path=self.date_path, term=self.term)
+        yield MatchMedia(date_path=self.date_path, term=self.term)
+        EventfulTask.update_job(date_path=self.date_path, status='SUCCESS')

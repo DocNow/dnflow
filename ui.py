@@ -1,0 +1,109 @@
+import logging
+import sqlite3
+
+from redis import Redis
+from rq import Queue
+
+from flask import Flask, render_template, url_for, send_from_directory
+from flask import g, request, redirect
+
+from queue_tasks import run_flow
+
+
+# FIXME: these should be in a separate config file
+DEBUG = True
+DATABASE = 'db.sqlite3'
+SECRET_KEY = 'a super secret key'
+STATIC_URL_PATH = ''
+DATA_DIR = 'data'
+MAX_TIMEOUT = 30 * 60  # thirty minutes should be enough
+
+redis_conn = Redis()
+q = Queue(connection=redis_conn)
+
+app = Flask(__name__, static_url_path=STATIC_URL_PATH)
+app.config.from_object(__name__)
+
+logging.getLogger().setLevel(logging.DEBUG)
+
+
+def connect_db():
+    return sqlite3.connect(app.config['DATABASE'])
+
+
+@app.before_request
+def before_request():
+    g.db = connect_db()
+    g.db.row_factory = sqlite3.Row
+
+
+def query(sql, args=(), one=False):
+    c = g.db.execute(sql, args)
+    rv = c.fetchall()
+    c.close()
+    return (rv[0] if rv else None) if one else rv
+
+
+@app.teardown_request
+def teardown_request(exception):
+    db = getattr(g, 'db', None)
+    if db is not None:
+        db.close()
+
+
+@app.route('/', methods=['GET'])
+def index():
+    searches = query('SELECT * FROM searches ORDER BY id DESC')
+    return render_template('index.html', searches=searches)
+
+
+@app.route('/new', methods=['POST'])
+def add_search():
+    text = request.form.get('text', None)
+    if text:
+        query('INSERT INTO searches (text, date_path) VALUES (?, ?)',
+              [request.form['text'], ''])
+        g.db.commit()
+        r = query(sql='SELECT last_insert_rowid() AS job_id FROM searches',
+                  one=True)
+        job_id = r['job_id']
+        job = q.enqueue_call(run_flow, args=(text, job_id),
+                             timeout=app.config['MAX_TIMEOUT'])
+        logging.debug('job: %s' % job)
+    return redirect(url_for('index'))
+
+
+@app.route('/job/', methods=['PUT'])
+def job():
+    job_id = request.form.get('job_id', None)
+    date_path = request.form.get('date_path', None)
+    status = request.form.get('status', None)
+    # A job is starting, we want the date_path
+    if job_id and date_path:
+        query('UPDATE searches SET date_path = ? WHERE id = ?',
+              [date_path, job_id])
+        logging.debug('update date_path=%s where id=%s' % (date_path, job_id))
+        g.db.commit()
+    # A job is in progress, we want the status
+    if date_path and status:
+        query('UPDATE searches SET status = ? WHERE date_path = ?',
+              [status, date_path])
+        logging.debug('update status=%s where date_path=%s' % (status,
+                                                               date_path))
+        g.db.commit()
+    return redirect(url_for('index'))
+
+
+@app.route('/summary/<date_path>/', methods=['GET'])
+def summary(date_path):
+    return render_template('summary.html')
+
+
+@app.route('/summary/<date_path>/<path:file_name>', methods=['GET'])
+def summary_static_proxy(date_path, file_name):
+    fname = '%s/%s' % (date_path, file_name)
+    return send_from_directory(app.config['DATA_DIR'], fname)
+
+
+if __name__ == '__main__':
+    app.run(debug=app.config['DEBUG'])

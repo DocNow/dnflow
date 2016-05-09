@@ -1,7 +1,10 @@
+Flask
 imagehash
 Jinja2
 luigi
 networkx
+redis
+rq
 sqlalchemy
 twarc
 tweepy
