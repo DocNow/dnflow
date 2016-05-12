@@ -60,6 +60,11 @@ def index():
 @app.route('/new', methods=['POST'])
 def add_search():
     text = request.form.get('text', None)
+    try:
+        count = request.form.get('count', None)
+        count = int(count)
+    except:
+        count = 1000
     if text:
         query('INSERT INTO searches (text, date_path) VALUES (?, ?)',
               [request.form['text'], ''])
@@ -67,7 +72,7 @@ def add_search():
         r = query(sql='SELECT last_insert_rowid() AS job_id FROM searches',
                   one=True)
         job_id = r['job_id']
-        job = q.enqueue_call(run_flow, args=(text, job_id),
+        job = q.enqueue_call(run_flow, args=(text, job_id, count),
                              timeout=app.config['MAX_TIMEOUT'])
         logging.debug('job: %s' % job)
     return redirect(url_for('index'))
