@@ -62,11 +62,9 @@ def generate_md5(fname, block_size=2**16):
 
 
 class EventfulTask(luigi.Task):
-    date_path = luigi.Parameter()
-    term = luigi.Parameter()
 
     @staticmethod
-    def update_job(jobid=None, date_path=None, status=None):
+    def update_job(date_path, jobid=None, status=None):
         data = {}
         if jobid:
             data['job_id'] = jobid
@@ -115,9 +113,10 @@ class Twarcy(object):
 
 
 class FetchTweets(EventfulTask, Twarcy):
-
+    date_path = luigi.Parameter()
+    term = luigi.Parameter()
+    count = luigi.IntParameter()
     lang = luigi.Parameter(default='en')
-    count = luigi.IntParameter(default=1000)
 
     def output(self):
         fname = 'data/%s/tweets.json' % self.date_path
@@ -138,9 +137,13 @@ class FetchTweets(EventfulTask, Twarcy):
 
 
 class CountHashtags(EventfulTask):
+    date_path = luigi.Parameter()
+    term = luigi.Parameter()
+    count = luigi.IntParameter()
 
     def requires(self):
-        return FetchTweets(date_path=self.date_path, term=self.term)
+        return FetchTweets(date_path=self.date_path, term=self.term,
+                           count=self.count)
 
     def output(self):
         fname = self.input().fn.replace('tweets.json', 'count-hashtags.csv')
@@ -163,9 +166,12 @@ class CountHashtags(EventfulTask):
 
 class EdgelistHashtags(EventfulTask):
     date_path = luigi.Parameter()
+    term = luigi.Parameter()
+    count = luigi.IntParameter()
 
     def requires(self):
-        return FetchTweets(date_path=self.date_path, term=self.term)
+        return FetchTweets(date_path=self.date_path, term=self.term,
+                           count=self.count)
 
     def output(self):
         fname = self.input().fn.replace('tweets.json', 'edgelist-hashtags.csv')
@@ -186,9 +192,13 @@ class EdgelistHashtags(EventfulTask):
 
 
 class CountUrls(EventfulTask):
+    date_path = luigi.Parameter()
+    term = luigi.Parameter()
+    count = luigi.IntParameter()
 
     def requires(self):
-        return FetchTweets(date_path=self.date_path, term=self.term)
+        return FetchTweets(date_path=self.date_path, term=self.term,
+                           count=self.count)
 
     def output(self):
         fname = self.input().fn.replace('tweets.json', 'count-urls.csv')
@@ -210,9 +220,13 @@ class CountUrls(EventfulTask):
 
 
 class CountDomains(EventfulTask):
+    date_path = luigi.Parameter()
+    term = luigi.Parameter()
+    count = luigi.IntParameter()
 
     def requires(self):
-        return FetchTweets(date_path=self.date_path, term=self.term)
+        return FetchTweets(date_path=self.date_path, term=self.term,
+                           count=self.count)
 
     def output(self):
         fname = self.input().fn.replace('tweets.json', 'count-domains.csv')
@@ -234,9 +248,13 @@ class CountDomains(EventfulTask):
 
 
 class CountMentions(EventfulTask):
+    date_path = luigi.Parameter()
+    term = luigi.Parameter()
+    count = luigi.IntParameter()
 
     def requires(self):
-        return FetchTweets(date_path=self.date_path, term=self.term)
+        return FetchTweets(date_path=self.date_path, term=self.term,
+                           count=self.count)
 
     def output(self):
         fname = self.input().fn.replace('tweets.json', 'count-mentions.csv')
@@ -259,9 +277,13 @@ class CountMentions(EventfulTask):
 
 
 class EdgelistMentions(EventfulTask):
+    date_path = luigi.Parameter()
+    term = luigi.Parameter()
+    count = luigi.IntParameter()
 
     def requires(self):
-        return FetchTweets(date_path=self.date_path, term=self.term)
+        return FetchTweets(date_path=self.date_path, term=self.term,
+                           count=self.count)
 
     def output(self):
         fname = self.input().fn.replace('tweets.json', 'edgelist-mentions.csv')
@@ -282,9 +304,13 @@ class EdgelistMentions(EventfulTask):
 
 
 class CountMedia(EventfulTask):
+    date_path = luigi.Parameter()
+    term = luigi.Parameter()
+    count = luigi.IntParameter()
 
     def requires(self):
-        return FetchTweets(date_path=self.date_path, term=self.term)
+        return FetchTweets(date_path=self.date_path, term=self.term,
+                           count=self.count)
 
     def output(self):
         fname = self.input().fn.replace('tweets.json', 'count-media.csv')
@@ -308,9 +334,13 @@ class CountMedia(EventfulTask):
 
 
 class FetchMedia(EventfulTask):
+    date_path = luigi.Parameter()
+    term = luigi.Parameter()
+    count = luigi.IntParameter()
 
     def requires(self):
-        return CountMedia(date_path=self.date_path, term=self.term)
+        return CountMedia(date_path=self.date_path, term=self.term,
+                          count=self.count)
 
     def output(self):
         # ensure only one successful fetch for each url
@@ -343,9 +373,13 @@ class FetchMedia(EventfulTask):
 
 
 class MatchMedia(EventfulTask):
+    date_path = luigi.Parameter()
+    term = luigi.Parameter()
+    count = luigi.IntParameter()
 
     def requires(self):
-        return FetchMedia(date_path=self.date_path, term=self.term)
+        return FetchMedia(date_path=self.date_path, term=self.term,
+                          count=self.count)
 
     def output(self):
         fname = self.input().fn.replace('media-checksums-md5.txt',
@@ -396,6 +430,9 @@ class MatchMedia(EventfulTask):
 
 
 class SummaryHTML(EventfulTask):
+    date_path = luigi.Parameter()
+    term = luigi.Parameter()
+    count = luigi.IntParameter()
 
     def requires(self):
         return FetchTweets(date_path=self.date_path, term=self.term)
@@ -412,9 +449,13 @@ class SummaryHTML(EventfulTask):
 
 
 class SummaryJSON(EventfulTask):
+    date_path = luigi.Parameter()
+    term = luigi.Parameter()
+    count = luigi.IntParameter()
 
     def requires(self):
-        return FetchTweets(date_path=self.date_path, term=self.term)
+        return FetchTweets(date_path=self.date_path, term=self.term,
+                           count=self.count)
 
     def output(self):
         fname = self.input().fn.replace('tweets.json', 'summary.json')
@@ -441,20 +482,31 @@ class SummaryJSON(EventfulTask):
 
 
 class RunFlow(EventfulTask):
-    jobid = luigi.IntParameter()
     date_path = time_hash()
+    jobid = luigi.IntParameter()
+    term = luigi.Parameter()
+    count = luigi.IntParameter(default=1000)
     # lang = luigi.Parameter(default='en')
-    # count = luigi.IntParameter(default=200)
 
     def requires(self):
         EventfulTask.update_job(jobid=self.jobid, date_path=self.date_path)
-        yield CountHashtags(date_path=self.date_path, term=self.term)
+        yield CountHashtags(date_path=self.date_path, term=self.term,
+                            count=self.count)
+        yield CountHashtags(date_path=self.date_path, term=self.term,
+                            count=self.count)
         # yield SummaryHTML(date_path=self.date_path, term=self.term)
-        yield SummaryJSON(date_path=self.date_path, term=self.term)
-        yield EdgelistHashtags(date_path=self.date_path, term=self.term)
-        yield CountUrls(date_path=self.date_path, term=self.term)
-        yield CountDomains(date_path=self.date_path, term=self.term)
-        yield CountMentions(date_path=self.date_path, term=self.term)
-        yield EdgelistMentions(date_path=self.date_path, term=self.term)
-        yield MatchMedia(date_path=self.date_path, term=self.term)
+        yield SummaryJSON(date_path=self.date_path, term=self.term,
+                          count=self.count)
+        yield EdgelistHashtags(date_path=self.date_path, term=self.term,
+                               count=self.count)
+        yield CountUrls(date_path=self.date_path, term=self.term,
+                        count=self.count)
+        yield CountDomains(date_path=self.date_path, term=self.term,
+                           count=self.count)
+        yield CountMentions(date_path=self.date_path, term=self.term,
+                            count=self.count)
+        yield EdgelistMentions(date_path=self.date_path, term=self.term,
+                               count=self.count)
+        yield MatchMedia(date_path=self.date_path, term=self.term,
+                         count=self.count)
         EventfulTask.update_job(date_path=self.date_path, status='SUCCESS')
