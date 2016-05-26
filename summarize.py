@@ -429,6 +429,69 @@ class MatchMedia(EventfulTask):
         #        writer.writerow(match)
 
 
+class CountFollowers(EventfulTask):
+    date_path = luigi.Parameter()
+    term = luigi.Parameter()
+    count = luigi.IntParameter()
+
+    def requires(self):
+        return FetchTweets(date_path=self.date_path, term=self.term,
+                           count=self.count)
+
+    def output(self):
+        fname = self.input().fn.replace('tweets.json','count-followers.csv')
+        return luigi.LocalTarget(fname)
+
+    def run(self):
+        users = {}
+        for tweet_str in self.input().open('r'):
+            tweet = json.loads(tweet_str)
+            user = tweet['user']['screen_name']
+            followers = tweet['user']['followers_count']
+            users[user] = followers
+
+        with self.output().open('w') as fp_counts:
+            writer = csv.DictWriter(fp_counts, delimiter=',',
+                                    quoting=csv.QUOTE_MINIMAL,
+                                    fieldnames=['user', 'count'])
+            writer.writeheader()
+            for user, count in users.items():
+                writer.writerow({'user': user, 'count': count})
+
+
+class FollowRatio(EventfulTask):
+    date_path = luigi.Parameter()
+    term = luigi.Parameter()
+    count = luigi.IntParameter()
+
+    def requires(self):
+        return FetchTweets(date_path=self.date_path, term=self.term,
+                           count=self.count)
+
+    def output(self):
+        fname = self.input().fn.replace('tweets.json','follow-ratio.csv')
+        return luigi.LocalTarget(fname)
+
+    def run(self):
+        users = {}
+        for tweet_str in self.input().open('r'):
+            tweet = json.loads(tweet_str)
+            user = tweet['user']['screen_name']
+            followers = int(tweet['user']['followers_count'])
+            following = int(tweet['user']['friends_count'])
+            if following > 0:
+                r = followers / float(following)
+                users[user] = r
+
+        with self.output().open('w') as fp_counts:
+            writer = csv.DictWriter(fp_counts, delimiter=',',
+                                    quoting=csv.QUOTE_MINIMAL,
+                                    fieldnames=['user', 'count'])
+            writer.writeheader()
+            for user, r in users.items():
+                writer.writerow({'user': user, 'count': r})
+
+
 class SummaryHTML(EventfulTask):
     date_path = luigi.Parameter()
     term = luigi.Parameter()
@@ -505,8 +568,13 @@ class RunFlow(EventfulTask):
                            count=self.count)
         yield CountMentions(date_path=self.date_path, term=self.term,
                             count=self.count)
+        yield CountFollowers(date_path=self.date_path, term=self.term,
+                             count=self.count)
+        yield FollowRatio(date_path=self.date_path, term=self.term,
+                          count=self.count)
         yield EdgelistMentions(date_path=self.date_path, term=self.term,
                                count=self.count)
         yield MatchMedia(date_path=self.date_path, term=self.term,
                          count=self.count)
+
         EventfulTask.update_job(date_path=self.date_path, status='SUCCESS')
