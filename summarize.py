@@ -15,6 +15,7 @@ from urllib.parse import urlparse
 import imagehash
 from jinja2 import Environment, PackageLoader
 import luigi
+from luigi.contrib import redis_store
 import networkx as nx
 from PIL import Image
 import requests
@@ -23,6 +24,9 @@ import twarc
 
 
 UI_URL = 'http://localhost:5000'
+REDIS_HOST = 'localhost'
+REDIS_PORT = 6379
+REDIS_DB = 4  # arbitrary
 
 logging.getLogger().setLevel(logging.WARN)
 logging.getLogger('').setLevel(logging.WARN)
@@ -43,10 +47,12 @@ def localstrftime():
     return time.strftime('%Y-%m-%dT%H%M', time.localtime())
 
 
-def url_filename(url):
+def url_filename(url, include_extension=True):
     """Given a full URL, return just the filename after the last slash."""
     parsed_url = urlparse(url)
     fname = parsed_url.path.split('/')[-1]
+    if not include_extension:
+        fname = fname.split('.')[0]
     return fname
 
 
@@ -481,6 +487,73 @@ class SummaryJSON(EventfulTask):
             json.dump(summary, fp_summary)
 
 
+class PopulateRedis(EventfulTask):
+    date_path = luigi.Parameter()
+    term = luigi.Parameter()
+    count = luigi.IntParameter()
+
+    def _get_target(self):
+        return redis_store.RedisTarget(host=REDIS_HOST, port=REDIS_PORT,
+                                       db=REDIS_DB,
+                                       update_id=self.date_path)
+
+    def requires(self):
+        return MatchMedia(date_path=self.date_path, term=self.term,
+                          count=self.count)
+
+    def output(self):
+        return self._get_target()
+
+    def run(self):
+        r = redis_store.redis.StrictRedis(host='localhost')
+        # Assume tweets.json exists, earlier dependencies require it
+        tweet_fname = 'data/%s/tweets.json' % self.date_path
+        for tweet_str in open(tweet_fname, 'r'):
+            tweet = json.loads(tweet_str)
+            pipe = r.pipeline()
+            # baseline data
+            pipe.sadd('tweets:%s' % self.date_path, tweet['id'])
+            pipe.set('tweet:%s' % tweet['id'], tweet_str)
+            for hashtag in [ht['text'].lower() for ht in
+                            tweet['entities']['hashtags']]:
+                pipe.zincrby('count:hashtags:%s' % self.date_path,
+                             hashtag, 1)
+                pipe.sadd('hashtag:%s:%s' % (hashtag, self.date_path),
+                          tweet['id'])
+            for mention in [m['screen_name'].lower() for m in
+                            tweet['entities']['user_mentions']]:
+                pipe.zincrby('count:mentions:%s' % self.date_path,
+                             mention, 1)
+                pipe.sadd('mention:%s:%s' % (mention, self.date_path),
+                          tweet['id'])
+            for photo_url in [m['media_url']
+                              for m in tweet['entities'].get('media', [])
+                              if m['type'] == 'photo']:
+                photo_id = url_filename(photo_url, include_extension=False)
+                pipe.zincrby('count:photos:%s' % self.date_path, photo_id, 1)
+                pipe.sadd('photo:%s:%s' % (photo_id, self.date_path),
+                          tweet['id'])
+            pipe.execute()
+
+        photo_matches_fname = 'data/%s/media-graph.json' % self.date_path
+        photo_matches = json.load(open(photo_matches_fname))
+        if photo_matches:
+            pipe = r.pipeline()
+            for photo_match in photo_matches:
+                for i in range(len(photo_match)):
+                    photo_id = photo_match[i]
+                    pipe.sadd('photomatch:%s:%s' % (photo_id, self.date_path),
+                              photo_match)
+            pipe.execute()
+        r.sadd('cacheproc', self.date_path)
+        target = self._get_target()
+        target.touch()
+
+    def complete(self):
+        target = self._get_target()
+        return target.exists()
+
+
 class RunFlow(EventfulTask):
     date_path = time_hash()
     jobid = luigi.IntParameter()
@@ -507,6 +580,8 @@ class RunFlow(EventfulTask):
                             count=self.count)
         yield EdgelistMentions(date_path=self.date_path, term=self.term,
                                count=self.count)
+        yield PopulateRedis(date_path=self.date_path, term=self.term,
+                            count=self.count)
         yield MatchMedia(date_path=self.date_path, term=self.term,
                          count=self.count)
         EventfulTask.update_job(date_path=self.date_path, status='SUCCESS')
