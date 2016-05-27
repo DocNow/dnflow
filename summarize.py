@@ -602,11 +602,14 @@ class PopulateRedis(EventfulTask):
         photo_matches = json.load(open(photo_matches_fname))
         if photo_matches:
             pipe = r.pipeline()
+            # each set of related images
             for photo_match in photo_matches:
+                photo_ids = [pm.split('.')[0] for pm in photo_match]
+                # each id in the set needs a lookup key
                 for i in range(len(photo_match)):
-                    photo_id = photo_match[i]
+                    photo_id = photo_ids[i]
                     pipe.sadd('photomatch:%s:%s' % (photo_id, self.date_path),
-                              photo_match)
+                              *photo_ids)
             pipe.execute()
         r.sadd('cacheproc', self.date_path)
         target = self._get_target()
