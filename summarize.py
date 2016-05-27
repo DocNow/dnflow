@@ -439,7 +439,7 @@ class CountFollowers(EventfulTask):
                            count=self.count)
 
     def output(self):
-        fname = self.input().fn.replace('tweets.json','count-followers.csv')
+        fname = self.input().fn.replace('tweets.json', 'count-followers.csv')
         return luigi.LocalTarget(fname)
 
     def run(self):
@@ -469,7 +469,7 @@ class FollowRatio(EventfulTask):
                            count=self.count)
 
     def output(self):
-        fname = self.input().fn.replace('tweets.json','follow-ratio.csv')
+        fname = self.input().fn.replace('tweets.json', 'follow-ratio.csv')
         return luigi.LocalTarget(fname)
 
     def run(self):
