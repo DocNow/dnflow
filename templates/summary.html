@@ -25,6 +25,7 @@
 {% endblock style_css_extra %}
 
 {% block javascript_extra %}
+<script type="text/javascript">
 var summary;
 
 d3.json("summary.json", function(e, summary) {
@@ -137,7 +138,7 @@ d3.json("media-graph.json", function(e, data) {
     // for each set
     for (i in data) {
         images = data[i]
-        images.sort(function(a, b) { 
+        images.sort(function(a, b) {
             return media_counts[b] - media_counts[a];
         });
         total = d3.sum(images, function(d) { return media_counts[d]; });
@@ -211,7 +212,7 @@ function chart(id, data, fieldname) {
         .attr("y", function(d) { return y(d.count); })
         .attr("height", function(d) { return height - y(d.count); });
 };
-
+</script>
 {% endblock javascript_extra %}
 
 {% block content %}

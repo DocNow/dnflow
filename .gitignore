@@ -69,3 +69,4 @@ data/
 *.sqlite*
 luigi-state.pickle
 .DS_Store
+*.rdb
