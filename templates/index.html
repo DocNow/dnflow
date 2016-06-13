@@ -1,28 +1,12 @@
 {% extends "base.html" %}
 
+{% block javascript_extra %}
+<!--<script type="text/babel" src="/static/js/index.js" />-->
+{% endblock javascript_extra %}
+
+
 {% block content %}
-<h1>hi there</h1>
 
-<h2>search something new</h2>
-<form method='post' action='/new'>
-    terms: <input type='text' name='text' />
-    count: <input type='text' name='count' value='1000'/>
-        <input type='submit' value='add' />
-</form>
+<script type="text/babel" src="/static/js/index.js"></static>
 
-{% if searches %}
-<ul>
-    {% for search in searches %}
-    <li>{{ search.id }}: 
-            {{ search.text }}
-        {% if search.status -%}
-            , {{ search.status }}
-        {%- endif %}
-        {% if search.date_path -%}
-            , <a href="/summary/{{ search.date_path }}/">{{ search.date_path }}</a>
-        {%- endif %}
-    </li>
-    {% endfor %}
-</ul>
-{% endif %}
 {% endblock content %}

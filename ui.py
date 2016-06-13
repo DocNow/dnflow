@@ -5,7 +5,7 @@ from redis import Redis
 from rq import Queue
 
 from flask import Flask, render_template, url_for, send_from_directory
-from flask import g, request, redirect
+from flask import g, jsonify, request, redirect
 
 from queue_tasks import run_flow
 
@@ -14,7 +14,7 @@ from queue_tasks import run_flow
 DEBUG = True
 DATABASE = 'db.sqlite3'
 SECRET_KEY = 'a super secret key'
-STATIC_URL_PATH = ''
+STATIC_URL_PATH = '/static'
 DATA_DIR = 'data'
 MAX_TIMEOUT = 30 * 60  # thirty minutes should be enough
 
@@ -31,16 +31,23 @@ def connect_db():
     return sqlite3.connect(app.config['DATABASE'])
 
 
+@app.route('/static/<path:path>')
+def send_static(path):
+    return send_from_directory(STATIC_URL_PATH, path)
+
+
 @app.before_request
 def before_request():
     g.db = connect_db()
     g.db.row_factory = sqlite3.Row
 
 
-def query(sql, args=(), one=False):
+def query(sql, args=(), one=False, json=False):
     c = g.db.execute(sql, args)
     rv = c.fetchall()
     c.close()
+    if json:
+        return [{k: r[k] for k in r.keys()} for r in rv]
     return (rv[0] if rv else None) if one else rv
 
 
@@ -97,6 +104,12 @@ def job():
                                                                date_path))
         g.db.commit()
     return redirect(url_for('index'))
+
+
+@app.route('/api/searches/', methods=['GET'])
+def api_searches():
+    searches = query('SELECT * FROM searches ORDER BY id DESC', json=True)
+    return jsonify(searches)
 
 
 @app.route('/summary/<date_path>/', methods=['GET'])

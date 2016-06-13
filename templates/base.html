@@ -12,7 +12,7 @@
         <style>
 .container {
     margin: 1em;
-    border: none; 
+    border: none;
 }
 
 .row {
@@ -28,13 +28,17 @@
         {% block style_css_extra %}
         {% endblock style_css_extra %}
         </style>
+
         {% block javascript %}
         <script src="https://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/react/15.1.0/react.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/react/15.1.0/react-dom.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-core/5.8.23/browser.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.2.0/jquery.min.js"></script>
         {% endblock javascript %}
-        <script>
+
         {% block javascript_extra %}
         {% endblock javascript_extra %}
-        </script>
     </head>
 
     <body>
@@ -45,8 +49,10 @@
             <div class='row'>
                 <h1 class='item' id='title'>{{ title }}</h1>
             </div>
+            <div id='content'>
 {% block content %}
 {% endblock content %}
+            </div>
         </div>
     </body>
 </html>
