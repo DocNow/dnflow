@@ -4,9 +4,10 @@ import { Provider } from 'react-redux'
 import { createStore } from 'redux'
 
 import ListContainer from './ListContainer'
-import highlighter from './reducers'
+import reducer from './reducers'
 
-let store = createStore(highlighter)
+let store = createStore(reducer,
+  window.devToolsExtension && window.devToolsExtension());
 
 render(
   <Provider store={store}>
