@@ -1,4 +1,5 @@
 import logging
+import random
 import sqlite3
 
 from redis import Redis
@@ -112,9 +113,22 @@ def api_searches():
     return jsonify(searches)
 
 
+@app.route('/api/list10/', methods=['GET'])
+def api_list10():
+    d = []
+    for i in range(1, 11):
+        d.append({'id': i, 'value': random.randint(1, 20)})
+    return jsonify(d)
+
+
 @app.route('/summary/<date_path>/', methods=['GET'])
 def summary(date_path):
     return render_template('summary.html')
+
+
+@app.route('/flux-sketch-1/', methods=['GET'])
+def flux_sketch_1():
+    return render_template('flux_sketch_1.html', title='Flux Sketch 1')
 
 
 @app.route('/summary/<date_path>/<path:file_name>', methods=['GET'])

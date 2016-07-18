@@ -1,0 +1,37 @@
+{
+  "name": "dnflow",
+  "version": "1.0.0",
+  "description": "An early experiment in automating a series of actions with Twitter data for docnow.",
+  "main": "./dist/bundle.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "webpack"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DocNow/dnflow.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/DocNow/dnflow/issues"
+  },
+  "homepage": "https://github.com/DocNow/dnflow#readme",
+  "dependencies": {
+    "react": "^15.2.1",
+    "react-dom": "^15.2.1",
+    "react-redux": "^4.4.5",
+    "redux": "^3.5.2"
+  },
+  "devDependencies": {
+    "babel-core": "^6.10.4",
+    "babel-loader": "^6.2.4",
+    "babel-plugin-transform-es2015-modules-commonjs-simple": "^6.7.4",
+    "babel-plugin-transform-runtime": "^6.9.0",
+    "babel-preset-es2015": "^6.9.0",
+    "babel-preset-es2015-webpack": "^6.4.1",
+    "babel-preset-react": "^6.11.1",
+    "babel-register": "^6.9.0",
+    "webpack": "^1.13.1"
+  }
+}
