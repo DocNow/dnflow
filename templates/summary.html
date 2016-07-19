@@ -23,18 +23,31 @@
     display: none;
 }
 
-.d3-tip {
-    line-height: 1;
-    padding: 12px;
-    font: 12px sans-serif;
-    text-align: center;
+.tipinfo, .tipaction {
     background: rgba(0, 0, 0, 0.8);
     color: #fff;
     border-radius: 2px;
 }
 
+.tipinfo {
+    line-height: 1;
+    padding: 12px;
+    font: 13px sans-serif;
+    text-align: center;
+}
+
+.tipaction {
+    line-height: normal;
+    padding-right: 2em;
+    font: 12px sans-serif;
+}
+
+.tipaction .b {
+    font-weight: bold;
+}
+
 /* Creates a small triangle extender for the tooltip */
-.d3-tip:after {
+.tipinfo:after {
     box-sizing: border-box;
     display: inline;
     font-size: 10px;
@@ -47,16 +60,45 @@
 }
 
 /* Style northward tooltips differently */
-.d3-tip.n:after {
+.tipinfo.n:after {
     margin: -1px 0 0 0;
     top: 100%;
     left: 0;
+}
+.d3-context-menu {
+    position: absolute;
+    display: none;
+    background-color: #f2f2f2;
+    border-radius: 4px;
+    font-family: Arial, sans-serif;
+    font-size: 14px;
+    min-width: 150px;
+    border: 1px solid #d4d4d4;
+    z-index:1200;
+}
+
+.d3-context-menu ul {
+    list-style-type: none;
+    margin: 4px 0px;
+    padding: 0px;
+    cursor: default;
+}
+
+.d3-context-menu ul li {
+    padding: 4px 16px;
+}
+
+.d3-context-menu ul li:hover {
+    background-color: #4677f8;
+    color: #fefefe;
 }
 {% endblock style_css_extra %}
 
 {% block javascript_extra %}
 <script type="text/javascript"
         src="https://rawgit.com/Caged/d3-tip/v0.6.7/index.js"></script>
+<script type="text/javascript"
+        src="https://rawgit.com/patorjk/d3-context-menu/master/js/d3-context-menu.js"></script>
 <script type="text/javascript">
 var summary;
 
@@ -79,6 +121,8 @@ var y = d3.scale.linear().range([height, 0]);
 var x_axis = d3.svg.axis().scale(x).orient("bottom");
 var y_axis = d3.svg.axis().scale(y).orient("left")
     .tickFormat(d3.format("d"));
+
+
 
 /* FIXME: this doesn't work.  Yields the following on console:
 before csv: hashtags
@@ -206,6 +250,32 @@ d3.json("media-graph.json", function(e, data) {
     };
 });
 
+function menu (name) { return [
+    {
+        title: name,
+        action: {},
+        disabled: true
+    },
+    {
+        title: "Add to search",
+        action: function(elm, d, i) {
+            console.log("Add " + d[fieldname] + " to search");
+        },
+    },
+    {
+        title: "Remove from results",
+        action: function(elm, d, i) {
+            console.log("Remove " + d[fieldname] + " from results");
+        },
+    },
+    {
+        title: "Browse matching tweets",
+        action: function(elm, d, i) {
+            console.log("Browse matching tweets for " + d[fieldname]);
+        },
+    }
+]};
+
 
 function chart(id, data, fieldname) {
     data.sort(function(a, b) { return b.count - a.count; });
@@ -220,11 +290,25 @@ function chart(id, data, fieldname) {
       .append("g")
         .attr("transform", "translate(" + margin.l + "," + margin.t + ")");
 
-    var tip = d3.tip()
-        .attr('class', 'd3-tip')
+    var tipinfo = d3.tip()
+        .attr('class', 'tipinfo')
         .offset([-10, 0])
-        .html(function(d) { return d.count + "<br />" + d[fieldname]; });
-    svg.call(tip)
+        .html(function(d) { 
+            return d[fieldname] + ": " + d.count;
+        });
+    svg.call(tipinfo);
+
+    var tipaction = d3.tip()
+        .attr('class', 'tipaction')
+        .html(function(d) { return "<ul class='tip-actions'><br />" +
+            "<li>Add <b>" + d[fieldname] + "</b> to your search</li><br />" +
+            "<li>Remove <b>" + d[fieldname] + "</b> from these results</li><br />" +
+            "<li>See <b>" + d[fieldname] + "</b> tweets</li><br />" +
+            "</ul>"
+            ; 
+        });
+    tipaction.direction("s");
+    svg.call(tipaction);
 
     svg.append("g")
         .attr("class", "x axis")
@@ -242,14 +326,18 @@ function chart(id, data, fieldname) {
 
     svg.selectAll(".bar")
         .data(data)
-      .enter().append("rect")
+      .enter().append("g")
+        .on('mouseover', tipinfo.show)
+        .on('mouseout', tipinfo.hide)
+        .on('contextmenu', function(d) { 
+            return d3.contextMenu(menu(d[fieldname]));
+            })
+        .append("rect")
         .attr("class", "bar")
         .attr("x", function(d) { return x(d[fieldname]); })
         .attr("width", x.rangeBand())
         .attr("y", function(d) { return y(d.count); })
-        .attr("height", function(d) { return height - y(d.count); })
-        .on('mouseover', tip.show)
-        .on('mouseout', tip.hide);
+        .attr("height", function(d) { return height - y(d.count); });
 };
 </script>
 {% endblock javascript_extra %}
