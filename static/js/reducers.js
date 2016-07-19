@@ -1,18 +1,23 @@
 import { combineReducers } from 'redux'
 
-const toggleItemReducer = (state = [], action) => {
-  console.log("action: " + action.type + " " + action.id)
+const items = (state=[], action) => {
+    switch (action.type) {
+      case 'TOGGLE_ITEM':
+        return state
+      default:
+        return state
+    }
+}
+
+const highlights = (state=[], action) => {
   switch (action.type) {
     case 'TOGGLE_ITEM':
-      var newstate = [...state];
+      let newstate = [...state]
       if (newstate.includes(action.id)) {
-        console.log('newstate: ' + newstate)
-        console.log('newstate includes ' + action.id)
-          newstate = newstate.filter(x => x != action.id)
+        newstate = newstate.filter(x => x != action.id)
       } else {
         newstate.push(action.id)
       }
-      console.log("state: " + newstate)
       return newstate
     default:
       return state
@@ -20,5 +25,6 @@ const toggleItemReducer = (state = [], action) => {
 }
 
 export default combineReducers({
-  toggleItemReducer
+  items: items,
+  highlights: highlights
 })

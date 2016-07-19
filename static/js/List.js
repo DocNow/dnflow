@@ -1,25 +1,29 @@
-import { PropTypes } from 'react'
+import React, { PropTypes } from 'react'
 
 import ListItem from './ListItem'
+import { toggleItem } from './actions'
 
-const List = ({ listItems, toggleItem }) => (
+let List = (props, { store }) => (
   <ul>
-    {listItems.map(listItem =>
-      <ListItem key={listItem.id}
-        id={listItem.id}
-        value={listItem.value}
-        onClick={() => toggleItem(listItem.id)}
+    {props.items.map(item =>
+      <ListItem key={item.id}
+        id={item.id}
+        value={item.value}
+        onClick={() => store.dispatch(toggleItem(item.id))}
       />
     )}
   </ul>
 );
 
 List.propTypes = {
-  listItems: PropTypes.arrayOf(PropTypes.shape({
+  items: PropTypes.arrayOf(PropTypes.shape({
     id: PropTypes.number.isRequired,
     value: PropTypes.number.isRequired
   }).isRequired).isRequired,
-  toggleItem: PropTypes.func.isRequired
+  // onClick: PropTypes.func.isRequired
+}
+List.contextTypes = {
+  store: React.PropTypes.object
 }
 
 export default List

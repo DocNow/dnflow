@@ -6,8 +6,10 @@ import { createStore } from 'redux'
 import ListContainer from './ListContainer'
 import reducer from './reducers'
 
-let store = createStore(reducer,
-  window.devToolsExtension && window.devToolsExtension());
+let store = createStore(
+  reducer,
+  window.devToolsExtension && window.devToolsExtension()
+);
 
 render(
   <Provider store={store}>

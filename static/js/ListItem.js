@@ -1,21 +1,39 @@
-import { PropTypes } from 'react'
+import React, { PropTypes } from 'react'
+import { connect } from 'react-redux'
 
 import { toggleItem } from './actions'
 
-let ListItem = ({ id, value, onClick }) => {
+const mapStateToProps = (state, ownProps) => {
+  return {id: ownProps.id, value: ownProps.value}
+}
+const mapDispatchToProps = (dispatch, ownProps) => {
+  return {
+    onClick: () => {
+      dispatch(toggleItem(ownProps.id))
+    }
+  }
+}
+let ListItem = (props) => {
   return (
     <li className="listItem"
-      onClick={onClick}
+      onClick={props.onClick}
       >
-      {id} : {value}
+      {props.id} : {props.value}
     </li>
   );
 };
+ListItem = connect(
+  mapStateToProps,
+  mapDispatchToProps
+)(ListItem)
 
 ListItem.propTypes = {
-  onClick: PropTypes.func.isRequired,
   id: PropTypes.number.isRequired,
-  value: PropTypes.number.isRequired
+  value: PropTypes.number.isRequired,
+  onClick: PropTypes.func.isRequired
+}
+ListItem.contextTypes = {
+  store: React.PropTypes.object
 }
 
 export default ListItem

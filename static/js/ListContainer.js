@@ -2,23 +2,24 @@ import React from 'react'
 import { connect } from 'react-redux'
 
 import ListFrame from './ListFrame'
-
+import { toggleItem } from './actions'
 
 const mapStateToProps = (state) => {
   return {
-    data: state.data
+    items: state.items,
+    highlights: state.highlights
   }
 }
 
 const mapDispatchToProps = (dispatch) => {
   return {
-    onListItemClick: (id) => {
+    onItemClick: (id) => {
       dispatch(toggleItem(id))
     }
   }
 }
 
-const ListContainer = connect(
+const ListContainer= connect(
   mapStateToProps,
   mapDispatchToProps
 )(ListFrame)

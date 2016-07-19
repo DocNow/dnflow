@@ -1,6 +1,6 @@
+import React, { Component, PropTypes } from 'react'
 import { connect } from 'react-redux'
 
-import { toggleItem } from './actions'
 import List from './List'
 
 let url = "/api/list10/"
@@ -9,6 +9,7 @@ let ListFrame = React.createClass({
   getInitialState: function() {
     return {data: []};
   },
+
   loadListFromServer: function() {
     $.ajax({
       url: url,
@@ -22,20 +23,36 @@ let ListFrame = React.createClass({
       }.bind(this)
     });
   },
+
   componentDidMount: function() {
+    const { store } = this.context;
+    this.unsubscribe = store.subscribe(() => this.forceUpdate());
     this.loadListFromServer();
   },
+
+  componentWillUnmount: function() {
+    this.unsubscribe()
+  },
+
   render: function() {
     return (
       <div className="listFrame">
-        <h2>List {this.props.id}</h2>
+        <h2>List</h2>
         <List
-          listItems={this.state.data}
-          toggleItem={toggleItem}
+          items={this.state.data}
           />
       </div>
     );
   }
 });
+
+ListFrame.propTypes = {
+  items: PropTypes.array.isRequired,
+}
+
+ListFrame.contextTypes = {
+  store: React.PropTypes.object
+};
+
 
 export default ListFrame
