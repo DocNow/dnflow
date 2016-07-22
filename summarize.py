@@ -16,6 +16,7 @@ import imagehash
 from jinja2 import Environment, PackageLoader
 import luigi
 from luigi.contrib import redis_store
+from luigi.contrib.spark import SparkSubmitTask
 import networkx as nx
 from PIL import Image
 import requests
@@ -140,6 +141,29 @@ class FetchTweets(EventfulTask, Twarcy):
         with self.output().open('w') as fp_out:
             for tweet in tweets:
                 fp_out.write(json.dumps(tweet) + '\n')
+
+
+class SparkCounter(EventfulTask, SparkSubmitTask):
+    # date_path = luigi.Parameter()
+    date_path = time_hash()
+    term = luigi.Parameter()
+    count = luigi.IntParameter()
+
+    name = 'PySpark Counter'
+    app = 'pyspark_counter.py'
+
+    def requires(self):
+        return FetchTweets(date_path=self.date_path, term=self.term,
+                           count=self.count)
+
+    def app_options(self):
+        # These are passed to the Spark main args in the defined order.
+        return [self.input().path, self.output().path]
+
+    def output(self):
+        fname = self.input().fn.replace('tweets.json',
+                                        'spark-stop-sign.txt')
+        return luigi.LocalTarget(fname)
 
 
 class CountHashtags(EventfulTask):
