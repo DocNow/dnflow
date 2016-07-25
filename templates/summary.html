@@ -23,7 +23,7 @@
     display: none;
 }
 
-.tipinfo, .tipaction {
+.tipinfo {
     background: rgba(0, 0, 0, 0.8);
     color: #fff;
     border-radius: 2px;
@@ -34,16 +34,6 @@
     padding: 12px;
     font: 13px sans-serif;
     text-align: center;
-}
-
-.tipaction {
-    line-height: normal;
-    padding-right: 2em;
-    font: 12px sans-serif;
-}
-
-.tipaction .b {
-    font-weight: bold;
 }
 
 /* Creates a small triangle extender for the tooltip */
@@ -97,8 +87,6 @@
 {% block javascript_extra %}
 <script type="text/javascript"
         src="https://rawgit.com/Caged/d3-tip/v0.6.7/index.js"></script>
-<script type="text/javascript"
-        src="https://rawgit.com/patorjk/d3-context-menu/master/js/d3-context-menu.js"></script>
 <script type="text/javascript">
 var summary;
 
@@ -108,6 +96,14 @@ d3.json("summary.json", function(e, summary) {
     var num_tweets = parseInt(summary.num_tweets);
     d3.select('#num_tweets').text(num_tweets.toLocaleString());
     d3.select('#date').text(summary.date);
+    // repeat for form field
+    var inputText = d3.select('#text');
+    inputText.property("value", summary.term);
+    // 1.6 is completely arbitrary :)
+    var newLength = summary.term.length * 1.6;
+    if (newLength > 50) { newLength = 50 };
+    inputText.property("size", newLength);
+    d3.select('#count').property("value", num_tweets.toLocaleString());
 });
 
 var margin = {t: 20, r: 30, b: 120, l: 70};
@@ -154,32 +150,32 @@ for (i in csvfiles) {
 
 d3.csv("count-hashtags.csv", function(e, data) {
     if (e) return console.warn(e);
-    chart("hashtags", data, "hashtag");
+    chart("hashtags", data, "hashtag", "#");
 });
 
 d3.csv("count-mentions.csv", function(e, data) {
     if (e) return console.warn(e);
-    chart("mentions", data, "screen_name");
+    chart("mentions", data, "screen_name", "@");
 });
 
 d3.csv("count-domains.csv", function(e, data) {
     if (e) return console.warn(e);
-    chart("domains", data, "url");
+    chart("domains", data, "url", null);
 });
 
 d3.csv("count-urls.csv", function(e, data) {
     if (e) return console.warn(e);
-    chart("urls", data, "url");
+    chart("urls", data, "url", null);
 });
 
 d3.csv("count-followers.csv", function(e, data) {
     if (e) return console.warn(e);
-    chart("followers", data, "user");
+    chart("followers", data, "user", "from:");
 });
 
 d3.csv("follow-ratio.csv", function(e, data) {
     if (e) return console.warn(e);
-    chart("follow-ratio", data, "user");
+    chart("follow-ratio", data, "user", "from:");
 });
 
 var media_counts = {};
@@ -277,7 +273,7 @@ function menu (name) { return [
 ]};
 
 
-function chart(id, data, fieldname) {
+function chart(id, data, fieldname, searchPrefix) {
     data.sort(function(a, b) { return b.count - a.count; });
     data = data.slice(0, 25);
 
@@ -293,22 +289,14 @@ function chart(id, data, fieldname) {
     var tipinfo = d3.tip()
         .attr('class', 'tipinfo')
         .offset([-10, 0])
-        .html(function(d) { 
-            return d[fieldname] + ": " + d.count;
+        .html(function(d) {
+            var tipText = d[fieldname] + ": " + d.count;
+            if (searchPrefix != null) {
+                tipText = tipText + "<br />" + "<br />" + "click to add";
+            }
+            return tipText;
         });
     svg.call(tipinfo);
-
-    var tipaction = d3.tip()
-        .attr('class', 'tipaction')
-        .html(function(d) { return "<ul class='tip-actions'><br />" +
-            "<li>Add <b>" + d[fieldname] + "</b> to your search</li><br />" +
-            "<li>Remove <b>" + d[fieldname] + "</b> from these results</li><br />" +
-            "<li>See <b>" + d[fieldname] + "</b> tweets</li><br />" +
-            "</ul>"
-            ; 
-        });
-    tipaction.direction("s");
-    svg.call(tipaction);
 
     svg.append("g")
         .attr("class", "x axis")
@@ -329,9 +317,17 @@ function chart(id, data, fieldname) {
       .enter().append("g")
         .on('mouseover', tipinfo.show)
         .on('mouseout', tipinfo.hide)
-        .on('contextmenu', function(d) { 
-            return d3.contextMenu(menu(d[fieldname]));
-            })
+        .on('click', function(d) {
+            if (searchPrefix != null) {
+                var inputText = d3.select('#text');
+                var oldValue = inputText.property("value");
+                var affixValue = searchPrefix + d[fieldname];
+                if (inputText.indexOf(affixValue) == -1) {
+                    var newValue = oldValue + " " + searchPrefix + d[fieldname];
+                    inputText.property("value", oldValue + " " + affixValue);
+                }
+            }
+        })
         .append("rect")
         .attr("class", "bar")
         .attr("x", function(d) { return x(d[fieldname]); })
@@ -349,6 +345,16 @@ function chart(id, data, fieldname) {
         tweets collected on
         <span id='date'></span>
     </h2>
+</div>
+<div class="row">
+    <h3 class="item">Modify your search:</h3>
+</div>
+<div class="row">
+    <form class="item" action="/new" method="POST">
+        terms: <input id='text' type='text' name='text' />
+        count: <input id='count' type='text' name='count' value='1000' size='8'/>
+        <input type='submit' value='add' />
+    </form>
 </div>
 <div class="row">
     <div id="hashtags" class="item">
