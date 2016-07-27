@@ -99,8 +99,8 @@ d3.json("summary.json", function(e, summary) {
     // repeat for form field
     var inputText = d3.select('#text');
     inputText.property("value", summary.term);
-    // 1.6 is completely arbitrary :)
-    var newLength = summary.term.length * 1.6;
+    // 1.2 is completely arbitrary :)
+    var newLength = summary.term.length * 1.2;
     if (newLength > 50) { newLength = 50 };
     inputText.property("size", newLength);
     d3.select('#count').property("value", num_tweets.toLocaleString());
@@ -322,9 +322,15 @@ function chart(id, data, fieldname, searchPrefix) {
                 var inputText = d3.select('#text');
                 var oldValue = inputText.property("value");
                 var affixValue = searchPrefix + d[fieldname];
-                if (inputText.indexOf(affixValue) == -1) {
+                if (oldValue.indexOf(affixValue) == -1) {
                     var newValue = oldValue + " " + searchPrefix + d[fieldname];
                     inputText.property("value", oldValue + " " + affixValue);
+                    var newLength = inputText.property("value").length;
+                    if (newLength > 50) {
+                        newLength = 50
+                    } else {
+                        inputText.property("size", newLength * 1.2);
+                    }
                 }
             }
         })
@@ -341,9 +347,9 @@ function chart(id, data, fieldname, searchPrefix) {
 {% block content %}
 <div class="row">
     <h2 class="item">
-        <span id='num_tweets'></span>
+        <span id="num_tweets"></span>
         tweets collected on
-        <span id='date'></span>
+        <span id="date"></span>
     </h2>
 </div>
 <div class="row">
@@ -351,9 +357,9 @@ function chart(id, data, fieldname, searchPrefix) {
 </div>
 <div class="row">
     <form class="item" action="/new" method="POST">
-        terms: <input id='text' type='text' name='text' />
-        count: <input id='count' type='text' name='count' value='1000' size='8'/>
-        <input type='submit' value='add' />
+        terms: <input id="text" type="text" name="text" />
+        count: <input id="count" type="text" name="count" value="1000" size="8"/>
+        <input type="submit" value="add" />
     </form>
 </div>
 <div class="row">
@@ -397,14 +403,14 @@ function chart(id, data, fieldname, searchPrefix) {
         Download the raw data behind these charts.
         </p>
         <ul>
-            <li><a href='count-domains.csv'>count-domains.csv</a></li>
-            <li><a href='count-followers.csv'>count-followers.csv</a></li>
-            <li><a href='count-hashtags.csv'>count-hashtags.csv</a></li>
-            <li><a href='count-media.csv'>count-media.csv</a></li>
-            <li><a href='count-mentions.csv'>count-mentions.csv</a></li>
-            <li><a href='count-urls.csv'>count-urls.csv</a></li>
-            <li><a href='follow-ratio.csv'>follow-ratio.csv</a></li>
-            <li><a href='tweets.json'>tweets.json</a></li>
+            <li><a href="count-domains.csv">count-domains.csv</a></li>
+            <li><a href="count-followers.csv">count-followers.csv</a></li>
+            <li><a href="count-hashtags.csv">count-hashtags.csv</a></li>
+            <li><a href="count-media.csv">count-media.csv</a></li>
+            <li><a href="count-mentions.csv">count-mentions.csv</a></li>
+            <li><a href="count-urls.csv">count-urls.csv</a></li>
+            <li><a href="follow-ratio.csv">follow-ratio.csv</a></li>
+            <li><a href="tweets.json">tweets.json</a></li>
         </ul>
     </div>
 </div>
