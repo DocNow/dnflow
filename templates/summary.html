@@ -150,32 +150,32 @@ for (i in csvfiles) {
 
 d3.csv("count-hashtags.csv", function(e, data) {
     if (e) return console.warn(e);
-    chart("hashtags", data, "hashtag", "#");
+    chart("hashtags", data, "hashtag", "#", false);
 });
 
 d3.csv("count-mentions.csv", function(e, data) {
     if (e) return console.warn(e);
-    chart("mentions", data, "screen_name", "@");
+    chart("mentions", data, "screen_name", "@", true);
 });
 
 d3.csv("count-domains.csv", function(e, data) {
     if (e) return console.warn(e);
-    chart("domains", data, "url", null);
+    chart("domains", data, "url", null, false);
 });
 
 d3.csv("count-urls.csv", function(e, data) {
     if (e) return console.warn(e);
-    chart("urls", data, "url", null);
+    chart("urls", data, "url", null, false);
 });
 
 d3.csv("count-followers.csv", function(e, data) {
     if (e) return console.warn(e);
-    chart("followers", data, "user", "from:");
+    chart("followers", data, "user", "from:", true);
 });
 
 d3.csv("follow-ratio.csv", function(e, data) {
     if (e) return console.warn(e);
-    chart("follow-ratio", data, "user", "from:");
+    chart("follow-ratio", data, "user", "from:", true);
 });
 
 var media_counts = {};
@@ -273,7 +273,7 @@ function menu (name) { return [
 ]};
 
 
-function chart(id, data, fieldname, searchPrefix) {
+function chart(id, data, fieldname, searchPrefix, userIntent) {
     data.sort(function(a, b) { return b.count - a.count; });
     data = data.slice(0, 25);
 
@@ -304,6 +304,13 @@ function chart(id, data, fieldname, searchPrefix) {
         .call(x_axis)
         .selectAll("text")
             .style("text-anchor", "end")
+            .on("click", function(d) {
+                if (userIntent == true) {
+                    var url = "https://twitter.com/intent/user?screen_name=" + d;
+                    window.open(url, '_blank',
+                        'location=no,height=570,width=520,scrollbars=no,status=yes');
+                }
+            })
             .attr("dx", "-1em")
             .attr("dy", ".15em")
             .attr("transform", "rotate(-65)");
