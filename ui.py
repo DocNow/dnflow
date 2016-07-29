@@ -125,30 +125,26 @@ def summary_static_proxy(date_path, file_name):
     return send_from_directory(app.config['DATA_DIR'], fname)
 
 
-@app.route('/q/<date_path>/count-hashtags/', methods=['GET'])
-def q_count_hashtags(date_path):
+def _count_entities(date_path, entity, attrname):
     try:
         # range query is 0-indexed
-        num = int(request.args['num']) - 1
+        num = int(request.args.get('num', 24)) - 1
     except:
         num = 24
-    counts = redis_conn.zrevrange('count:hashtags:%s' % date_path, 0, num,
+    counts = redis_conn.zrevrange('count:%s:%s' % (entity, date_path), 0, num,
                                   True)
-    d = [{'hashtag': hashtag, 'count': count} for hashtag, count in counts]
+    return [{attrname: e, 'count': c} for e, c in counts]
+
+
+@app.route('/q/<date_path>/count-hashtags/', methods=['GET'])
+def q_count_hashtags(date_path):
+    d = _count_entities(date_path, 'hashtags', 'hashtag')
     return jsonify(d)
 
 
 @app.route('/q/<date_path>/count-mentions/', methods=['GET'])
 def q_count_mentions(date_path):
-    try:
-        # range query is 0-indexed
-        num = int(request.args['num']) - 1
-    except:
-        num = 24
-    counts = redis_conn.zrevrange('count:mentions:%s' % date_path, 0, num,
-                                  True)
-    d = [{'screen_name': screen_name, 'count': count}
-         for screen_name, count in counts]
+    d = _count_entities(date_path, 'mentions', 'screen_name')
     return jsonify(d)
 
 
