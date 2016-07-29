@@ -1,7 +1,7 @@
 import logging
 import sqlite3
 
-from redis import Redis
+import redis
 from rq import Queue
 
 from flask import Flask, render_template, url_for, send_from_directory
@@ -18,7 +18,9 @@ STATIC_URL_PATH = '/static'
 DATA_DIR = 'data'
 MAX_TIMEOUT = 30 * 60  # thirty minutes should be enough
 
-redis_conn = Redis()
+# FIXME: host hard-coded, and decode_responses shouldn't always be True
+redis_conn = redis.StrictRedis(host='localhost', charset='utf-8',
+                               decode_responses=True)
 q = Queue(connection=redis_conn)
 
 app = Flask(__name__, static_url_path=STATIC_URL_PATH)
@@ -121,6 +123,33 @@ def summary(date_path):
 def summary_static_proxy(date_path, file_name):
     fname = '%s/%s' % (date_path, file_name)
     return send_from_directory(app.config['DATA_DIR'], fname)
+
+
+@app.route('/q/<date_path>/count-hashtags/', methods=['GET'])
+def q_count_hashtags(date_path):
+    try:
+        # range query is 0-indexed
+        num = int(request.args['num']) - 1
+    except:
+        num = 24
+    counts = redis_conn.zrevrange('count:hashtags:%s' % date_path, 0, num,
+                                  True)
+    d = [{'hashtag': hashtag, 'count': count} for hashtag, count in counts]
+    return jsonify(d)
+
+
+@app.route('/q/<date_path>/count-mentions/', methods=['GET'])
+def q_count_mentions(date_path):
+    try:
+        # range query is 0-indexed
+        num = int(request.args['num']) - 1
+    except:
+        num = 24
+    counts = redis_conn.zrevrange('count:mentions:%s' % date_path, 0, num,
+                                  True)
+    d = [{'screen_name': screen_name, 'count': count}
+         for screen_name, count in counts]
+    return jsonify(d)
 
 
 if __name__ == '__main__':
