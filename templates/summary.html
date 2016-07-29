@@ -304,6 +304,9 @@ function chart(id, data, fieldname, searchPrefix, userIntent) {
         .call(x_axis)
         .selectAll("text")
             .style("text-anchor", "end")
+            .style("cursor", function(d) {
+                return userIntent ? "pointer" : null;
+            })
             .on("click", function(d) {
                 if (userIntent == true) {
                     var url = "https://twitter.com/intent/user?screen_name=" + d;
