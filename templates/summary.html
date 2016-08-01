@@ -55,33 +55,6 @@
     top: 100%;
     left: 0;
 }
-.d3-context-menu {
-    position: absolute;
-    display: none;
-    background-color: #f2f2f2;
-    border-radius: 4px;
-    font-family: Arial, sans-serif;
-    font-size: 14px;
-    min-width: 150px;
-    border: 1px solid #d4d4d4;
-    z-index:1200;
-}
-
-.d3-context-menu ul {
-    list-style-type: none;
-    margin: 4px 0px;
-    padding: 0px;
-    cursor: default;
-}
-
-.d3-context-menu ul li {
-    padding: 4px 16px;
-}
-
-.d3-context-menu ul li:hover {
-    background-color: #4677f8;
-    color: #fefefe;
-}
 {% endblock style_css_extra %}
 
 {% block javascript_extra %}
@@ -118,35 +91,6 @@ var x_axis = d3.svg.axis().scale(x).orient("bottom");
 var y_axis = d3.svg.axis().scale(y).orient("left")
     .tickFormat(d3.format("d"));
 
-
-
-/* FIXME: this doesn't work.  Yields the following on console:
-before csv: hashtags
-before csv: mentions
-before csv: domains
-before csv: urls
-in csv: urls
-in csv: urls
-in csv: urls
-in csv: urls
-
-var csvfiles = [
-    ["count-hashtags.csv", "hashtags", "hashtag"],
-    ["count-mentions.csv", "mentions", "screen_name"],
-    ["count-domains.csv", "domains", "url"],
-    ["count-urls.csv", "urls", "url"]
-    ];
-
-for (i in csvfiles) {
-    var csvfile = csvfiles[i];
-    console.debug("before csv: " + csvfile[1]);
-    d3.csv(csvfile[0], function(e, data) {
-        if (e) return console.warn(e);
-        console.debug("in csv: " + csvfile[1]);
-        chart(csvfile[1], data, csvfile[2]);
-    });
-};
-*/
 
 d3.csv("count-hashtags.csv", function(e, data) {
     if (e) return console.warn(e);
@@ -245,32 +189,6 @@ d3.json("media-graph.json", function(e, data) {
                 .attr("src", function(d) { return "media/" + d; });
     };
 });
-
-function menu (name) { return [
-    {
-        title: name,
-        action: {},
-        disabled: true
-    },
-    {
-        title: "Add to search",
-        action: function(elm, d, i) {
-            console.log("Add " + d[fieldname] + " to search");
-        },
-    },
-    {
-        title: "Remove from results",
-        action: function(elm, d, i) {
-            console.log("Remove " + d[fieldname] + " from results");
-        },
-    },
-    {
-        title: "Browse matching tweets",
-        action: function(elm, d, i) {
-            console.log("Browse matching tweets for " + d[fieldname]);
-        },
-    }
-]};
 
 
 function chart(id, data, fieldname, searchPrefix) {
