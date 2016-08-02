@@ -16,7 +16,7 @@ DATABASE = 'db.sqlite3'
 SECRET_KEY = 'a super secret key'
 STATIC_URL_PATH = '/static'
 DATA_DIR = 'data'
-MAX_TIMEOUT = 30 * 60  # thirty minutes should be enough
+MAX_TIMEOUT = 2 * 60 * 60  # two hours should be long enough
 
 # FIXME: host hard-coded, and decode_responses shouldn't always be True
 redis_conn = redis.StrictRedis(host='localhost', charset='utf-8',
