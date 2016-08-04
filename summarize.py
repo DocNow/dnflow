@@ -93,7 +93,7 @@ class EventfulTask(luigi.Task):
     def success(task):
         print('### SUCCESS ###: %s' % task)
         EventfulTask.update_job(date_path=task.date_path,
-                                status='START: %s' % task.task_family)
+                                status='FINISHED: %s' % task.task_family)
 
     @luigi.Task.event_handler(luigi.Event.PROCESSING_TIME)
     def processing_time(task, processing_time):
