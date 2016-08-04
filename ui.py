@@ -1,13 +1,12 @@
+import redis
 import logging
 import sqlite3
 
-import redis
 from rq import Queue
-
-from flask import Flask, render_template, url_for, send_from_directory
-from flask import g, jsonify, request, redirect
-
 from queue_tasks import run_flow
+from flask import g, jsonify, request, redirect
+from flask import Flask, render_template, url_for, send_from_directory
+
 
 
 # FIXME: these should be in a separate config file
@@ -60,13 +59,16 @@ def teardown_request(exception):
         db.close()
 
 
+# Web views
+
+
 @app.route('/', methods=['GET'])
 def index():
     searches = query('SELECT * FROM searches ORDER BY id DESC')
     return render_template('index.html', searches=searches)
 
 
-@app.route('/new', methods=['POST'])
+@app.route('/searches/', methods=['POST'])
 def add_search():
     text = request.form.get('text', None)
     try:
@@ -79,7 +81,7 @@ def add_search():
               [request.form['text'], ''])
         g.db.commit()
         r = query(sql='SELECT last_insert_rowid() AS job_id FROM searches',
-                  one=True)
+                 one=True)
         job_id = r['job_id']
         job = q.enqueue_call(run_flow, args=(text, job_id, count),
                              timeout=app.config['MAX_TIMEOUT'])
@@ -92,6 +94,7 @@ def job():
     job_id = request.form.get('job_id', None)
     date_path = request.form.get('date_path', None)
     status = request.form.get('status', None)
+
     # A job is starting, we want the date_path
     if job_id and date_path:
         query('UPDATE searches SET date_path = ? WHERE id = ?',
@@ -108,12 +111,6 @@ def job():
     return redirect(url_for('index'))
 
 
-@app.route('/api/searches/', methods=['GET'])
-def api_searches():
-    searches = query('SELECT * FROM searches ORDER BY id DESC', json=True)
-    return jsonify(searches)
-
-
 @app.route('/summary/<date_path>/', methods=['GET'])
 def summary(date_path):
     return render_template('summary.html')
@@ -123,6 +120,27 @@ def summary(date_path):
 def summary_static_proxy(date_path, file_name):
     fname = '%s/%s' % (date_path, file_name)
     return send_from_directory(app.config['DATA_DIR'], fname)
+
+
+# api routes for getting data below
+
+
+@app.route('/api/searches/', methods=['GET'])
+def api_searches():
+    searches = query('SELECT * FROM searches ORDER BY id DESC', json=True)
+    return jsonify(searches)
+
+
+@app.route('/api/searches/<date_path>/hashtags/', methods=['GET'])
+def hashtags(date_path):
+    d = _count_entities(date_path, 'hashtags', 'hashtag')
+    return jsonify(d)
+
+
+@app.route('/api/searches/<date_path>/mentions/', methods=['GET'])
+def mentions(date_path):
+    d = _count_entities(date_path, 'mentions', 'screen_name')
+    return jsonify(d)
 
 
 def _count_entities(date_path, entity, attrname):
@@ -136,16 +154,6 @@ def _count_entities(date_path, entity, attrname):
     return [{attrname: e, 'count': c} for e, c in counts]
 
 
-@app.route('/q/<date_path>/count-hashtags/', methods=['GET'])
-def q_count_hashtags(date_path):
-    d = _count_entities(date_path, 'hashtags', 'hashtag')
-    return jsonify(d)
-
-
-@app.route('/q/<date_path>/count-mentions/', methods=['GET'])
-def q_count_mentions(date_path):
-    d = _count_entities(date_path, 'mentions', 'screen_name')
-    return jsonify(d)
 
 
 if __name__ == '__main__':

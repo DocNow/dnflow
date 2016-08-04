@@ -43,10 +43,6 @@ def time_hash(digits=6):
     return '%s-%s' % (dt, hash.hexdigest()[:digits])
 
 
-def localstrftime():
-    return time.strftime('%Y-%m-%dT%H%M', time.localtime())
-
-
 def url_filename(url, include_extension=True):
     """Given a full URL, return just the filename after the last slash."""
     parsed_url = urlparse(url)

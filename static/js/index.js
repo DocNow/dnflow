@@ -83,7 +83,7 @@ var SearchBox = React.createClass({
   handleSearchSubmit: function(search) {
     $.ajax({
       // url: this.props.url,
-      url: '/new',
+      url: '/searches/',
       dataType: 'json',
       type: 'POST',
       data: search,
