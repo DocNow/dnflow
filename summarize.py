@@ -129,17 +129,13 @@ class FetchTweets(EventfulTask, Twarcy):
         return luigi.LocalTarget(fname)
 
     def run(self):
-        i = 0
-        tweets = []
-        for tweet in self._twarc.search(self.term, lang=self.lang):
-            i += 1
-            if i > self.count:
-                break
-            tweets.append(tweet)
-
-        with self.output().open('w') as fp_out:
-            for tweet in tweets:
-                fp_out.write(json.dumps(tweet) + '\n')
+        with self.output().open('w') as fh:
+            i = 0
+            for tweet in self._twarc.search(self.term, lang=self.lang):
+                i += 1
+                if i > self.count:
+                    break
+                fh.write(json.dumps(tweet) + '\n')
 
 
 class CountHashtags(EventfulTask):
@@ -576,7 +572,6 @@ class PopulateRedis(EventfulTask):
             pipe = r.pipeline()
             # baseline data
             pipe.sadd('tweets:%s' % self.date_path, tweet['id'])
-            pipe.set('tweet:%s' % tweet['id'], tweet_str)
             for hashtag in [ht['text'].lower() for ht in
                             tweet['entities']['hashtags']]:
                 pipe.zincrby('count:hashtags:%s' % self.date_path,
