@@ -1,13 +1,12 @@
-import redis
 import logging
 import sqlite3
 
-from rq import Queue
-from queue_tasks import run_flow
 from flask import g, jsonify, request, redirect
 from flask import Flask, render_template, url_for, send_from_directory
+import redis
+from rq import Queue
 
-
+from queue_tasks import run_flow
 
 # FIXME: these should be in a separate config file
 DEBUG = True
@@ -81,7 +80,7 @@ def add_search():
               [request.form['text'], ''])
         g.db.commit()
         r = query(sql='SELECT last_insert_rowid() AS job_id FROM searches',
-                 one=True)
+                  one=True)
         job_id = r['job_id']
         job = q.enqueue_call(run_flow, args=(text, job_id, count),
                              timeout=app.config['MAX_TIMEOUT'])
@@ -152,8 +151,6 @@ def _count_entities(date_path, entity, attrname):
     counts = redis_conn.zrevrange('count:%s:%s' % (entity, date_path), 0, num,
                                   True)
     return [{attrname: e, 'count': c} for e, c in counts]
-
-
 
 
 if __name__ == '__main__':
