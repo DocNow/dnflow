@@ -43,10 +43,6 @@ def time_hash(digits=6):
     return '%s-%s' % (dt, hash.hexdigest()[:digits])
 
 
-def localstrftime():
-    return time.strftime('%Y-%m-%dT%H%M', time.localtime())
-
-
 def url_filename(url, include_extension=True):
     """Given a full URL, return just the filename after the last slash."""
     parsed_url = urlparse(url)
@@ -422,13 +418,6 @@ class MatchMedia(EventfulTask):
             logging.debug(' - = - = - = GRAPH HERE - = - = - = -')
             logging.debug(d)
             json.dump(d, fp_graph, indent=2)
-        # with self.output().open('w') as fp:
-        #    writer = csv.writer(fp, delimiter=',',
-        #                        quoting=csv.QUOTE_MINIMAL)
-        #    writer.writerow(['file1', 'file2', 'ahash', 'dhash',
-        #                     'phash', 'sumhash'])
-        #    for match in matches:
-        #        writer.writerow(match)
 
 
 class CountFollowers(EventfulTask):
@@ -620,7 +609,6 @@ class RunFlow(EventfulTask):
     jobid = luigi.IntParameter()
     term = luigi.Parameter()
     count = luigi.IntParameter(default=1000)
-    # lang = luigi.Parameter(default='en')
 
     def requires(self):
         EventfulTask.update_job(jobid=self.jobid, date_path=self.date_path)
@@ -628,7 +616,6 @@ class RunFlow(EventfulTask):
                             count=self.count)
         yield CountHashtags(date_path=self.date_path, term=self.term,
                             count=self.count)
-        # yield SummaryHTML(date_path=self.date_path, term=self.term)
         yield SummaryJSON(date_path=self.date_path, term=self.term,
                           count=self.count)
         yield EdgelistHashtags(date_path=self.date_path, term=self.term,
