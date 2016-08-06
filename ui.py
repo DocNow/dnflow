@@ -1,13 +1,15 @@
-import redis
 import logging
 import sqlite3
 
-from rq import Queue
-from queue_tasks import run_flow
 from flask_oauthlib.client import OAuth
-from flask import g, jsonify, request, redirect, Flask, render_template, \
-                  url_for, send_from_directory, session, flash
+from flask import g, jsonify, request, redirect, session, flash
+from flask import Flask, render_template, url_for, send_from_directory
+import redis
+from rq import Queue
 
+from queue_tasks import run_flow
+
+# configure application
 
 app = Flask(__name__)
 app.config.from_pyfile('dnflow.cfg')
@@ -17,6 +19,10 @@ redis_conn = redis.StrictRedis(host=app.config['REDIS'], charset='utf-8',
 q = Queue(connection=redis_conn)
 
 logging.getLogger().setLevel(logging.DEBUG)
+
+
+# twitter authentication
+
 
 oauth = OAuth()
 twitter = oauth.remote_app('twitter',
@@ -29,21 +35,19 @@ twitter = oauth.remote_app('twitter',
 )
 
 
-def connect_db():
-    return sqlite3.connect(app.config['DATABASE'])
-
-
 @app.route('/login')
 def login():
     next = request.args.get('next') or request.referrer or None
-    callback_url = 'http://edsu-dev.docnow.io' + url_for('oauth_authorized', next=next)
+    callback_url = 'http://' + app.config['HOSTNAME'] + url_for('oauth_authorized', next=next)
     return twitter.authorize(callback=callback_url)
+
 
 @app.route('/logout')
 def logout():
     del session['twitter_token'] 
     del session['twitter_user']
     return redirect('/')
+
 
 @app.route('/oauth-authorized')
 def oauth_authorized():
@@ -66,6 +70,9 @@ def get_twitter_token(token=None):
     return session.get('twitter_token')
 
 
+# webapp routes
+
+
 @app.route('/static/<path:path>')
 def send_static(path):
     return send_from_directory('/static', path)
@@ -79,6 +86,10 @@ def page_not_found(error):
 def before_request():
     g.db = connect_db()
     g.db.row_factory = sqlite3.Row
+
+
+def connect_db():
+    return sqlite3.connect(app.config['DATABASE'])
 
 
 def query(sql, args=(), one=False, json=False):
@@ -97,11 +108,10 @@ def teardown_request(exception):
         db.close()
 
 
-# Web views
-
 @app.context_processor
 def inject_user():
     return dict(twitter_user=session.get('twitter_user', None))
+
 
 @app.route('/', methods=['GET'])
 def index():
@@ -130,7 +140,7 @@ def add_search():
         query(sql, [request.form['text'], '', session['twitter_user']])
         g.db.commit()
         r = query(sql='SELECT last_insert_rowid() AS job_id FROM searches',
-                 one=True)
+                  one=True)
         job_id = r['job_id']
         job = q.enqueue_call(
             run_flow, 
@@ -180,7 +190,7 @@ def summary_static_proxy(date_path, file_name):
     return send_from_directory(app.config['DATA_DIR'], fname)
 
 
-# api routes for getting data below
+# api routes for getting data
 
 
 @app.route('/api/searches/', methods=['GET'])
@@ -210,8 +220,6 @@ def _count_entities(date_path, entity, attrname):
     counts = redis_conn.zrevrange('count:%s:%s' % (entity, date_path), 0, num,
                                   True)
     return [{attrname: e, 'count': c} for e, c in counts]
-
-
 
 
 if __name__ == '__main__':

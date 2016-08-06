@@ -1,3 +1,4 @@
+HOSTNAME = 'localhost'
 DEBUG = True
 DATABASE = 'db.sqlite3'
 SECRET_KEY = 'a super secret key'
