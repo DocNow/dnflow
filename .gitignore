@@ -71,3 +71,4 @@ luigi-state.pickle
 .DS_Store
 *.rdb
 node_modules/
+dnflow.cfg
