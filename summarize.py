@@ -24,11 +24,6 @@ import requests
 import twarc
 
 
-UI_URL = 'http://localhost:5000'
-REDIS_HOST = 'localhost'
-REDIS_PORT = 6379
-REDIS_DB = 4  # arbitrary
-
 config = Config(os.path.dirname(__file__))
 config.from_pyfile('dnflow.cfg')
 
@@ -78,7 +73,7 @@ class EventfulTask(luigi.Task):
             data['date_path'] = date_path
         if status:
             data['status'] = status
-        r = requests.put('%s/job/' % UI_URL, data=data)
+        r = requests.put('http://%s/job/' % config['HOSTNAME'], data=data)
         if r.status_code in [200, 302]:
             return True
         return False
@@ -500,8 +495,9 @@ class PopulateRedis(EventfulTask):
     search = luigi.DictParameter()
 
     def _get_target(self):
-        return redis_store.RedisTarget(host=REDIS_HOST, port=REDIS_PORT,
-                                       db=REDIS_DB,
+        return redis_store.RedisTarget(host=config['REDIS_HOST'], 
+                                       port=config['REDIS_PORT'],
+                                       db=config['REDIS_DB'],
                                        update_id=self.search['date_path'])
 
     def requires(self):
