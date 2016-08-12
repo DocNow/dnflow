@@ -14,8 +14,8 @@ keys to it:
     cp dnflow.cfg.template dnflow.cfg
 
 If you are running on a non-standard HTTP port, such as the flask default,
-```localhost:5000```, be sure to include the port number in the value of
-```HOSTNAME```, e.g.:
+`localhost:5000`, be sure to include the port number in the value of
+`HOSTNAME`, e.g.:
 
     HOSTNAME = 'localhost:5000'
 
@@ -73,17 +73,7 @@ terminal:
  * Start a [Redis Queue](http://python-rq.org/) worker
 
 RQ requires a running instance of Redis and one or more workers, also
-best done in another terminal.  Make sure that your Twitter keys are
-available in your dnflow virtual environment:
-
-```
-export CONSUMER_KEY="BUT, I CAN CHANGE"
-export CONSUMER_SECRET="I CAN CHANGE"
-export ACCESS_TOKEN="I CAN CHANGE"
-export ACCESS_TOKEN_SECRET="I CAN CHANGE"
-```
-
-and then:
+best done in another terminal.
 
 ```
 % rq worker
