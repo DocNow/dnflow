@@ -44,8 +44,7 @@ twitter = oauth.remote_app('twitter',
 @app.route('/login')
 def login():
     next = request.args.get('next') or request.referrer or None
-    callback_url = 'http://' + app.config['HOSTNAME'] + \
-                   url_for('oauth_authorized', next=next)
+    callback_url = 'http://' + app.config['HOSTNAME'] + url_for('oauth_authorized', next=next)
     return twitter.authorize(callback=callback_url)
 
 
@@ -83,7 +82,6 @@ def get_twitter_token(token=None):
 @app.route('/static/<path:path>')
 def send_static(path):
     return send_from_directory('/static', path)
-
 
 @app.errorhandler(404)
 def page_not_found(error):
