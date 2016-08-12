@@ -1,7 +1,9 @@
 # dnflow
 
 An early experiment in automating a series of actions with Twitter
-data for docnow.
+data for docnow. If you want to install dnflow and don't want to manually 
+set things up yourself give our 
+[Ansible playbook](https://github.com/docnow/dnflow-ansible) a try.
 
 Uses [Luigi](http://luigi.readthedocs.org/) for workflow automation.
 
