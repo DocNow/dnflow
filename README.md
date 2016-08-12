@@ -13,6 +13,12 @@ keys to it:
 
     cp dnflow.cfg.template dnflow.cfg
 
+If you are running on a non-standard HTTP port, such as the flask default,
+```localhost:5000```, be sure to include the port number in the value of
+```HOSTNAME```, e.g.:
+
+    HOSTNAME = 'localhost:5000'
+
 The current `summarize.py` is set up to collect a handful of tweets
 based on a search, then execute a series of counts against it.  This
 will result in one data file (the source tweets) and several count
