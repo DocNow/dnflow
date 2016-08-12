@@ -14,7 +14,7 @@ from queue_tasks import run_flow
 app = Flask(__name__)
 app.config.from_pyfile('dnflow.cfg')
 
-redis_conn = redis.StrictRedis(host=app.config['REDIS'], charset='utf-8',
+redis_conn = redis.StrictRedis(host=app.config['REDIS_HOST'], charset='utf-8',
                                decode_responses=True)
 q = Queue(connection=redis_conn)
 
@@ -38,13 +38,14 @@ twitter = oauth.remote_app('twitter',
 @app.route('/login')
 def login():
     next = request.args.get('next') or request.referrer or None
-    callback_url = 'http://' + app.config['HOSTNAME'] + url_for('oauth_authorized', next=next)
+    callback_url = 'http://' + app.config['HOSTNAME'] + \
+                   url_for('oauth_authorized', next=next)
     return twitter.authorize(callback=callback_url)
 
 
 @app.route('/logout')
 def logout():
-    del session['twitter_token'] 
+    del session['twitter_token']
     del session['twitter_user']
     return redirect('/')
 
@@ -76,6 +77,7 @@ def get_twitter_token(token=None):
 @app.route('/static/<path:path>')
 def send_static(path):
     return send_from_directory('/static', path)
+
 
 @app.errorhandler(404)
 def page_not_found(error):
@@ -143,11 +145,11 @@ def add_search():
                   one=True)
         job_id = r['job_id']
         job = q.enqueue_call(
-            run_flow, 
+            run_flow,
             args=(
-                text, 
-                job_id, 
-                count, 
+                text,
+                job_id,
+                count,
                 session['twitter_token'][0],
                 session['twitter_token'][1]
             ),
