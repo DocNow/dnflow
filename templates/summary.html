@@ -276,6 +276,31 @@ function chart(id, data, fieldname, searchPrefix) {
         .attr("y", function(d) { return y(d.count); })
         .attr("height", function(d) { return height - y(d.count); });
 };
+
+d3.json("/api/searches", function(e, data) {
+    if (e) return console.warn(e);
+    var comparisons = d3.select("#compare").append("ul");
+
+    // remove the present search from the list for comparison
+    data = data.filter(function(d) {
+        if (d.date_path === date_path) {
+            return false;
+        } else {
+            return true;
+        }
+    });
+
+    comparisons.selectAll(".search")
+        .data(data)
+      .enter().append("li")
+        .append("a")
+          .attr("href", function(d) {
+              return "/summary/" + date_path + "/compare?id=" + d.id;
+              })
+          .text(function(d) { return d.text; });
+});
+
+
 </script>
 {% endblock javascript_extra %}
 
@@ -329,6 +354,11 @@ function chart(id, data, fieldname, searchPrefix) {
 <div class="row">
     <div id="media-matches" class="item">
         <h3>Matching images</h3>
+    </div>
+</div>
+<div class="row">
+    <div id="compare" class="item">
+        <h3>Compare with other searches</h3>
     </div>
 </div>
 <div class="row">
