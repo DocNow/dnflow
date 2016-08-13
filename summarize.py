@@ -73,7 +73,21 @@ class EventfulTask(luigi.Task):
             data['date_path'] = date_path
         if status:
             data['status'] = status
-        r = requests.put('http://%s/job/' % config['HOSTNAME'], data=data)
+        url = 'http://%s/job/' % config['HOSTNAME']
+
+        # TODO: basic auth is only used during hackish masking of the prototype
+        # on the public internet. Eventually we'll want to come up with some
+        # secure way of doing this PUT update to /job
+        # https://github.com/DocNow/dnflow/issues/24
+
+        if 'HTTP_BASICAUTH_USER' in config and 'HTTP_BASICAUTH_PASS' in config:
+            auth = requests.auth.HTTPBasicAuth(
+                config['HTTP_BASICAUTH_USER'],
+                config['HTTP_BASICAUTH_PASS']
+            )
+            r = requests.put(url, data=data, auth=auth)
+        else:
+            r = requests.put(url, data=data)
         if r.status_code in [200, 302]:
             return True
         return False
