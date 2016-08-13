@@ -96,7 +96,7 @@ class EventfulTask(luigi.Task):
     def start(task):
         print('### START ###: %s' % task)
         EventfulTask.update_job(date_path=task.search['date_path'],
-                                status='START: %s' % task.task_family)
+                                status='STARTED: %s' % task.task_family)
 
     @luigi.Task.event_handler(luigi.Event.SUCCESS)
     def success(task):
@@ -112,7 +112,7 @@ class EventfulTask(luigi.Task):
     def failure(task, exc):
         print('### FAILURE ###: %s, %s' % (task, exc))
         EventfulTask.update_job(date_path=task.search['date_path'],
-                                status='START: %s' % task.task_family)
+                                status='FAILED: %s' % task.task_family)
 
 
 class FetchTweets(EventfulTask):
@@ -604,4 +604,3 @@ class RunFlow(EventfulTask):
         yield EdgelistMentions(search=search)
         yield PopulateRedis(search=search)
         yield MatchMedia(search=search)
-        EventfulTask.update_job(date_path=search['date_path'], status='SUCCESS')
