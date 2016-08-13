@@ -591,6 +591,7 @@ class RunFlow(EventfulTask):
             "secret": self.secret,
             "lang": "en"
         }
+        self.search = search
         EventfulTask.update_job(job_id=search['job_id'], date_path=search['date_path'])
         yield CountHashtags(search=search)
         yield SummaryJSON(search=search)
