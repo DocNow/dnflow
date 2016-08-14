@@ -138,6 +138,11 @@ class FetchTweets(EventfulTask):
                 i += 1
                 if i > count:
                     break
+                if i % 500 == 0:
+                    self.update_job(
+                        date_path=self.search['date_path'],
+                        status="STARTED: %s - %s" % (self.task_family, i)
+                    )
                 fh.write(json.dumps(tweet) + '\n')
 
 
@@ -573,6 +578,23 @@ class PopulateRedis(EventfulTask):
         return target.exists()
 
 
+class ExtractTweetIds(EventfulTask):
+    search = luigi.DictParameter()
+
+    def requires(self):
+        return FetchTweets(search=self.search)
+
+    def output(self):
+        fname = self.input().fn.replace('tweets.json', 'tweet-ids.txt')
+        return luigi.LocalTarget(fname)
+
+    def run(self):
+        with self.output().open('w') as fh:
+            for tweet_str in self.input().open('r'):
+                tweet = json.loads(tweet_str)
+                fh.write(tweet['id_str'] + "\n")
+
+
 class RunFlow(EventfulTask):
     date_path = time_hash()
     jobid = luigi.IntParameter()
@@ -604,3 +626,4 @@ class RunFlow(EventfulTask):
         yield EdgelistMentions(search=search)
         yield PopulateRedis(search=search)
         yield MatchMedia(search=search)
+        yield ExtractTweetIds(search=search)
