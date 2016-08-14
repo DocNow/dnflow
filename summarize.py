@@ -73,7 +73,21 @@ class EventfulTask(luigi.Task):
             data['date_path'] = date_path
         if status:
             data['status'] = status
-        r = requests.put('http://%s/job/' % config['HOSTNAME'], data=data)
+        url = 'http://%s/job/' % config['HOSTNAME']
+
+        # TODO: basic auth is only used during hackish masking of the prototype
+        # on the public internet. Eventually we'll want to come up with some
+        # secure way of doing this PUT update to /job
+        # https://github.com/DocNow/dnflow/issues/24
+
+        if 'HTTP_BASICAUTH_USER' in config and 'HTTP_BASICAUTH_PASS' in config:
+            auth = requests.auth.HTTPBasicAuth(
+                config['HTTP_BASICAUTH_USER'],
+                config['HTTP_BASICAUTH_PASS']
+            )
+            r = requests.put(url, data=data, auth=auth)
+        else:
+            r = requests.put(url, data=data)
         if r.status_code in [200, 302]:
             return True
         return False
@@ -82,7 +96,7 @@ class EventfulTask(luigi.Task):
     def start(task):
         print('### START ###: %s' % task)
         EventfulTask.update_job(date_path=task.search['date_path'],
-                                status='START: %s' % task.task_family)
+                                status='STARTED: %s' % task.task_family)
 
     @luigi.Task.event_handler(luigi.Event.SUCCESS)
     def success(task):
@@ -98,7 +112,7 @@ class EventfulTask(luigi.Task):
     def failure(task, exc):
         print('### FAILURE ###: %s, %s' % (task, exc))
         EventfulTask.update_job(date_path=task.search['date_path'],
-                                status='START: %s' % task.task_family)
+                                status='FAILED: %s' % task.task_family)
 
 
 class FetchTweets(EventfulTask):
@@ -577,6 +591,7 @@ class RunFlow(EventfulTask):
             "secret": self.secret,
             "lang": "en"
         }
+        self.search = search
         EventfulTask.update_job(job_id=search['job_id'], date_path=search['date_path'])
         yield CountHashtags(search=search)
         yield SummaryJSON(search=search)
@@ -589,4 +604,3 @@ class RunFlow(EventfulTask):
         yield EdgelistMentions(search=search)
         yield PopulateRedis(search=search)
         yield MatchMedia(search=search)
-        EventfulTask.update_job(date_path=search['date_path'], status='SUCCESS')
