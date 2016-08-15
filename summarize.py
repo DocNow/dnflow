@@ -8,6 +8,7 @@ import csv
 import hashlib
 import json
 import logging
+import math
 import os
 import time
 from urllib.parse import urlparse
@@ -60,6 +61,13 @@ def generate_md5(fname, block_size=2**16):
                 break
             m.update(buf)
     return m.hexdigest()
+
+
+def get_block_size(count):
+    """Given an integer count, deterine a useful block size at which
+    to post updates back to the server so users get a useful sense of
+    progress.  Should give 3 for n=200, 4 for n=2000, etc."""
+    return int(count / math.ceil(math.log10(count)))
 
 
 class EventfulTask(luigi.Task):
@@ -141,7 +149,8 @@ class FetchTweets(EventfulTask):
                 if i % 500 == 0:
                     self.update_job(
                         date_path=self.search['date_path'],
-                        status="STARTED: %s - %s" % (self.task_family, i)
+                        status="STARTED: %s - %s/%s" %
+                               (self.task_family, i, count)
                     )
                 fh.write(json.dumps(tweet) + '\n')
 
@@ -336,11 +345,18 @@ class FetchMedia(EventfulTask):
         return luigi.LocalTarget(fname)
 
     def run(self):
+        # get a count of files to fetch for updates
+        with self.input().open('r') as countfile:
+            # drop one for headers
+            count = sum(1 for line in countfile) - 1
+        # determine update block size
+        update_block_size = get_block_size(count)
+
         dirname = 'data/%s/media' % self.search['date_path']
         os.makedirs(dirname, exist_ok=True)
         # lots of hits to same server, so pool connections
-        hashes = []
         session = requests.Session()
+        hashes = []
         with self.input().open('r') as csvfile:
             reader = csv.DictReader(csvfile, delimiter=',')
             for row in reader:
@@ -353,6 +369,13 @@ class FetchMedia(EventfulTask):
                     with open(full_name, 'wb') as media_file:
                         media_file.write(r.content)
                     md5 = generate_md5(full_name)
+                    hashes.append((md5, full_name))
+                    if len(hashes) % update_block_size == 0:
+                        self.update_job(
+                            date_path=self.search['date_path'],
+                            status="STARTED: %s - %s/%s" %
+                                   (self.task_family, len(hashes), count)
+                        )
         with self.output().open('w') as f:
             for md5, h in hashes:
                 f.write('%s %s\n' % (md5, h))
@@ -375,6 +398,7 @@ class MatchMedia(EventfulTask):
         hashes = {}
         matches = []
         g = nx.Graph()
+        update_block_size = get_block_size(len(files))
         for i in range(len(files)):
             f = files[i]
             fn = 'data/%s/media/%s' % (date_path, f)
@@ -388,6 +412,7 @@ class MatchMedia(EventfulTask):
                 sumhash = sum([ahash - f2['ahash'],
                                dhash - f2['dhash'],
                                phash - f2['phash']])
+                # FIXME: 40 is a hard-coded arbitrary (eyeballed) threshold
                 if sumhash <= 40:
                     matches.append([f, files[j],
                                     ahash - f2['ahash'],
@@ -395,14 +420,18 @@ class MatchMedia(EventfulTask):
                                     phash - f2['phash'],
                                     sumhash])
                     g.add_edge(f, f2name)
+            if i % update_block_size == 0:
+                self.update_job(
+                    date_path=self.search['date_path'],
+                    status="STARTED: %s - %s/%s" %
+                           (self.task_family, i, len(files))
+                )
         with self.output().open('w') as fp_graph:
             components = list(nx.connected_components(g))
             # Note: sets are not JSON serializable
             d = []
             for s in components:
                 d.append(list(s))
-            logging.debug(' - = - = - = GRAPH HERE - = - = - = -')
-            logging.debug(d)
             json.dump(d, fp_graph, indent=2)
 
 
@@ -514,7 +543,7 @@ class PopulateRedis(EventfulTask):
     search = luigi.DictParameter()
 
     def _get_target(self):
-        return redis_store.RedisTarget(host=config['REDIS_HOST'], 
+        return redis_store.RedisTarget(host=config['REDIS_HOST'],
                                        port=config['REDIS_PORT'],
                                        db=config['REDIS_DB'],
                                        update_id=self.search['date_path'])
@@ -614,7 +643,8 @@ class RunFlow(EventfulTask):
             "lang": "en"
         }
         self.search = search
-        EventfulTask.update_job(job_id=search['job_id'], date_path=search['date_path'])
+        EventfulTask.update_job(job_id=search['job_id'],
+                                date_path=search['date_path'])
         yield CountHashtags(search=search)
         yield SummaryJSON(search=search)
         yield EdgelistHashtags(search=search)
