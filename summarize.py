@@ -149,7 +149,8 @@ class FetchTweets(EventfulTask):
                 if i % 500 == 0:
                     self.update_job(
                         date_path=self.search['date_path'],
-                        status="STARTED: %s - %s" % (self.task_family, i)
+                        status="STARTED: %s - %s/%s" %
+                               (self.task_family, i, count)
                     )
                 fh.write(json.dumps(tweet) + '\n')
 
