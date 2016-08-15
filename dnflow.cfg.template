@@ -10,3 +10,8 @@ REDIS_PORT = 6379
 REDIS_DB = 4
 TWITTER_CONSUMER_KEY = 'YOUR_TWITTER_CONSUMER_KEY_HERE'
 TWITTER_CONSUMER_SECRET = 'YOUR_TWITTER_CONSUMER_SECRET_HERE'
+
+# set the following two variables to o non-empty values to add
+# basic auth for PUT updates on /job
+HTTP_BASICAUTH_USER = ''
+HTTP_BASICAUTH_PASS = ''
