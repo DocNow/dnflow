@@ -290,23 +290,23 @@ d3.json("/api/searches", function(e, data) {
         }
     });
 
+    var search_id = d3.select("#search_id").text();
     comparisons.selectAll(".search")
         .data(data)
       .enter().append("li")
         .append("a")
           .attr("href", function(d) {
-              return "/summary/" + date_path + "/compare?id=" + d.id;
+              return "/summary/" + search_id + "/compare?id=" + d.id;
               })
           .text(function(d) { return d.text; });
 });
-
-
 </script>
 {% endblock javascript_extra %}
 
 {% block content %}
 <div class="row">
     <h2 class="item">
+        #<span id="search_id">{{ search.id }}</span>:
         <span id="num_tweets"></span>
         tweets collected on
         <span id="date"></span>

@@ -4,6 +4,7 @@ import sqlite3
 from flask_oauthlib.client import OAuth
 from flask import g, jsonify, request, redirect, session, flash
 from flask import Flask, render_template, url_for, send_from_directory
+import pandas as pd
 import redis
 from rq import Queue
 
@@ -187,7 +188,9 @@ def job():
 
 @app.route('/summary/<date_path>/', methods=['GET'])
 def summary(date_path):
-    return render_template('summary.html')
+    search = query('SELECT * FROM searches WHERE date_path = ?', [date_path],
+                   one=True)
+    return render_template('summary.html', search=search)
 
 
 @app.route('/summary/<date_path>/<path:file_name>', methods=['GET'])
@@ -196,13 +199,51 @@ def summary_static_proxy(date_path, file_name):
     return send_from_directory(app.config['DATA_DIR'], fname)
 
 
-# api routes for getting data
+@app.route('/summary/<int:search_id>/compare', methods=['GET'])
+def summary_compare(search_id):
+    search = query('SELECT * FROM searches WHERE id = ?', [search_id],
+                   one=True)
+    compare_ids = request.args.get('ids', '')
+    return render_template('summary_compare.html', search=search,
+                           compare_ids=compare_ids)
 
+
+# api routes for getting data
 
 @app.route('/api/searches/', methods=['GET'])
 def api_searches():
     searches = query('SELECT * FROM searches ORDER BY id DESC', json=True)
     return jsonify(searches)
+
+
+@app.route('/api/hashtags/<int:search_id>/', methods=['GET'])
+def hashtags_multi(search_id):
+    ids = [search_id]
+    compare_ids = request.args.get('ids', '')
+    if compare_ids:
+        ids.extend([int(i) for i in compare_ids.split(',') if i.isdigit()])
+    in_clause = ','.join([str(i) for i in ids])
+    searches = query("""
+        SELECT id, date_path, text
+        FROM searches WHERE id in (%s)
+        """ % in_clause)
+    summary = []
+    search = searches[0]
+    summary.append({'id': search['id'], 'date_path': search['date_path'],
+                    'text': search['text'],
+                    'colname': 'count_%s' % search['id']})
+    d = pd.read_csv('data/%s/count-hashtags.csv' % search['date_path'])
+    d = d.rename(columns={'count': 'count_%s' % search['id']})
+    for search in searches[1:]:
+        summary.append({'id': search['id'], 'date_path': search['date_path'],
+                        'text': search['text'],
+                        'colname': 'count_%s' % search['id']})
+        e = pd.read_csv('data/%s/count-hashtags.csv' % search['date_path'])
+        e = e.rename(columns={'count': 'count_%s' % search['id']})
+        d = pd.merge(d, e, on='hashtag', how='outer').fillna(0)
+    d.sort_values(by='count_%s' % search_id, inplace=True, ascending=False)
+    result = {'summary': summary, 'hashtags': d.to_dict(orient='record')}
+    return jsonify(result)
 
 
 @app.route('/api/searches/<date_path>/hashtags/', methods=['GET'])

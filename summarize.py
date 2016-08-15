@@ -500,6 +500,7 @@ class SummaryJSON(EventfulTask):
                      for m in tweet['entities'].get('media', [])
                      if m['type'] == 'photo'])
         summary = {
+                'id': self.search['job_id'],
                 'path': self.search['date_path'],
                 'date': time.strftime('%Y-%m-%d %H:%M:%S',
                                       time.localtime()),
@@ -514,7 +515,7 @@ class PopulateRedis(EventfulTask):
     search = luigi.DictParameter()
 
     def _get_target(self):
-        return redis_store.RedisTarget(host=config['REDIS_HOST'], 
+        return redis_store.RedisTarget(host=config['REDIS_HOST'],
                                        port=config['REDIS_PORT'],
                                        db=config['REDIS_DB'],
                                        update_id=self.search['date_path'])
@@ -614,7 +615,8 @@ class RunFlow(EventfulTask):
             "lang": "en"
         }
         self.search = search
-        EventfulTask.update_job(job_id=search['job_id'], date_path=search['date_path'])
+        EventfulTask.update_job(job_id=search['job_id'],
+                                date_path=search['date_path'])
         yield CountHashtags(search=search)
         yield SummaryJSON(search=search)
         yield EdgelistHashtags(search=search)
