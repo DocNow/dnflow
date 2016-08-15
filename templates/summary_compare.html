@@ -1,11 +1,33 @@
 {% extends "base.html" %}
 
 {% block style_css_extra %}
+body {
+  font: 12px sans-serif;
+}
+
+.axis path,
+.axis line {
+  fill: none;
+  stroke: #000;
+  shape-rendering: crispEdges;
+}
+
+.bar {
+  fill: steelblue;
+}
+
+.x.axis path {
+  display: none;
+}
 {% endblock style_css_extra %}
 
 {% block javascript_extra %}
 <script type="text/javascript">
+/* extract some vals from html; FIXME: awkward */
 var date_path = d3.select("#date_path").text();
+var search_id = d3.select("#search_id").text();
+var compare_ids = d3.select("#compare_ids").text();
+
 d3.json("/summary/" + date_path + "/summary.json", function(e, summary) {
     if (e) return console.warn(e);
     d3.select('#title').text("Compare: " + summary.term);
@@ -14,7 +36,130 @@ d3.json("/summary/" + date_path + "/summary.json", function(e, summary) {
     d3.select('#num_tweets').text(num_tweets.toLocaleString());
 });
 
+var hashtags_multi_url = "/api/hashtags/" + search_id + "?ids=" + compare_ids;
+var resp;
 
+var margin = {top: 20, right: 20, bottom: 100, left: 40},
+    width = 1100 - margin.left - margin.right,
+    height = 700 - margin.top - margin.bottom;
+
+var x_hashtag = d3.scale.ordinal()
+    .rangeRoundBands([0, width], .1);
+
+var x_search = d3.scale.ordinal();
+
+var y = d3.scale.linear()
+    .range([height, 0]);
+
+var color = d3.scale.category20c();
+
+var xAxis = d3.svg.axis()
+    .scale(x_hashtag)
+    .orient("bottom");
+
+var yAxis = d3.svg.axis()
+    .scale(y)
+    .orient("left")
+    .tickFormat(d3.format(".2s"));
+
+var svg = d3.select("#hashtags").append("svg")
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom)
+  .append("g")
+    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+var resp;
+var colnames;
+var hashtags;
+var base_search_name;
+d3.json(hashtags_multi_url, function(e, data) {
+    if (e) return console.warn(e);
+    /* just for debugging */
+    resp = data;
+
+    var summary = data.summary;
+    /* limit the volume of hashtags to render - TODO: this is arbitrary */
+    hashtags = data.hashtags.slice(0, 25);
+
+    /* manipulate data into the right shape as needed */
+    colnames = summary.map(function(d) {
+      return {colname: d.colname, text: d.text};
+    });
+    hashtags.forEach(function(d) {
+      d.counts = colnames.map(function(col) {
+        return {name: col.colname, value: +d[col.colname]}; });
+    });
+
+    base_search_name = "count_" + search_id;
+    /* set domains for each scale */
+    x_hashtag.domain(hashtags.map(function(d) { return d.hashtag; }));
+    y.domain([0, d3.max(hashtags.map(function(d) { return d[base_search_name]; }))]);
+    x_search.domain(colnames.map(function(d) { return d.colname; }))
+      .rangeRoundBands([0, x_hashtag.rangeBand()]);
+    color.domain(colnames.map(function(d) { return d.colname; }));
+
+    svg.append("g")
+      .attr("class", "x axis")
+      .attr("transform", "translate(0," + height + ")")
+      .call(xAxis)
+      .selectAll("text")
+        .style("text-anchor", "end")
+        .attr("dx", "-0.8em")
+        .attr("dy", "0.2em")
+        .style("cursor", "pointer")
+        .on("click", function(d) {
+          var url = "https://twitter.com/search?q=%23" + d;
+          window.open(url, "_blank");
+        })
+        .attr("transform", "rotate(-60)");
+
+    svg.append("g")
+        .attr("class", "y axis")
+        .call(yAxis)
+      .append("text")
+        .attr("transform", "rotate(-90)")
+        .attr("y", 6)
+        .attr("dy", ".31em")
+        .style("text-anchor", "end")
+        .text("# tweets");
+
+    var hashtag = svg.selectAll(".hashtag")
+        .data(hashtags)
+      .enter().append("g")
+        .attr("class", "hashtag")
+        .attr("transform", function(d) {
+          return "translate(" + x_hashtag(d.hashtag) + ",0)";
+        });
+
+    hashtag.selectAll("rect")
+        .data(function(d) { return d.counts; })
+      .enter().append("rect")
+        .attr("width", x_search.rangeBand())
+        .attr("x", function(d) { return x_search(d.name); })
+        .attr("y", function(d) { return y(d.value); })
+        .attr("height", function(d) { return height - y(d.value); })
+        .style("fill", function(d) { return color(d.name); });
+
+    var legend = svg.selectAll(".legend")
+        .data(colnames.slice().reverse())
+      .enter().append("g")
+        .attr("class", "legend")
+        .attr("transform", function(d, i) { return "translate(0," + i * 20 + ")"; });
+
+    legend.append("rect")
+        .attr("x", width - 18)
+        .attr("width", 18)
+        .attr("height", 18)
+        .style("fill", function(d) { return color(d.colname); });
+
+    legend.append("text")
+        .attr("x", width - 24)
+        .attr("y", 9)
+        .attr("dy", ".35em")
+        .style("text-anchor", "end")
+        .text(function(d) { return d.text; });
+
+});
 </script>
 {% endblock javascript_extra %}
 
@@ -26,6 +171,12 @@ d3.json("/summary/" + date_path + "/summary.json", function(e, summary) {
         tweets collected on
         <span id="date"></span>
         <span id="date_path" style="display:none;">{{ search.date_path }}</span>
+        <span id="compare_ids" style="display:none;">{{ compare_ids }}</span>
     </h2>
+</div>
+<div class="row">
+    <div id="hashtags" class="item">
+        <h3>Hashtags</h3>
+    </div>
 </div>
 {% endblock content %}

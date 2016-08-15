@@ -296,7 +296,7 @@ d3.json("/api/searches", function(e, data) {
       .enter().append("li")
         .append("a")
           .attr("href", function(d) {
-              return "/summary/" + search_id + "/compare?id=" + d.id;
+              return "/summary/" + search_id + "/compare?ids=" + d.id;
               })
           .text(function(d) { return d.text; });
 });
