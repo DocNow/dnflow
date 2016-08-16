@@ -529,6 +529,7 @@ class SummaryJSON(EventfulTask):
                      for m in tweet['entities'].get('media', [])
                      if m['type'] == 'photo'])
         summary = {
+                'id': self.search['job_id'],
                 'path': self.search['date_path'],
                 'date': time.strftime('%Y-%m-%d %H:%M:%S',
                                       time.localtime()),

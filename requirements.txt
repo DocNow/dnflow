@@ -4,6 +4,7 @@ imagehash
 Jinja2
 luigi
 networkx
+pandas
 redis
 rq
 sqlalchemy
