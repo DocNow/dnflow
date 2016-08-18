@@ -533,8 +533,8 @@ class SummaryJSON(EventfulTask):
         summary = {
                 'id': self.search['job_id'],
                 'path': self.search['date_path'],
-                'date': time.strftime('%Y-%m-%d %H:%M:%S',
-                                      time.localtime()),
+                'date': time.strftime('%Y-%m-%dT%H:%M:%SZ',
+                                      time.gmtime()),
                 'num_tweets': num_tweets,
                 'term': self.search['term']
                 }

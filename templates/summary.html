@@ -68,7 +68,7 @@ d3.json("summary.json", function(e, summary) {
     d3.select('#title').text(summary.term);
     var num_tweets = parseInt(summary.num_tweets);
     d3.select('#num_tweets').text(num_tweets.toLocaleString());
-    var t = new Date(summary.date + ' GMT');
+    var t = new Date(summary.date);
     d3.select('#date').text($.format.date(t, 'yyyy-MM-dd HH:mm:ss'));
     // repeat for form field
     var inputText = d3.select('#text');

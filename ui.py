@@ -122,8 +122,7 @@ def inject_user():
 
 @app.route('/', methods=['GET'])
 def index():
-    searches = query('SELECT * FROM searches ORDER BY id DESC')
-    return render_template('index.html', searches=searches)
+    return render_template('index.html')
 
 
 @app.route('/searches/', methods=['POST'])
@@ -213,6 +212,7 @@ def summary_compare(search_id):
 @app.route('/api/searches/', methods=['GET'])
 def api_searches():
     searches = query('SELECT * FROM searches ORDER BY id DESC', json=True)
+    searches = list(map(_date_format, searches))
     return jsonify(searches)
 
 
@@ -267,6 +267,15 @@ def _count_entities(date_path, entity, attrname):
     counts = redis_conn.zrevrange('count:%s:%s' % (entity, date_path), 0, num,
                                   True)
     return [{attrname: e, 'count': c} for e, c in counts]
+
+
+def _date_format(row):
+    t = row['created']
+    t = t.replace(' ', 'T')
+    t += 'Z'
+    row['created'] = t
+    return row
+
 
 
 if __name__ == '__main__':

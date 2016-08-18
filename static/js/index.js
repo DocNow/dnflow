@@ -1,10 +1,10 @@
 var Search = React.createClass({
   render: function() {
     var link = <a href={"/summary/" + this.props.date_path}>{this.props.text}</a>;
-    if (! this.props.status.match(/FINISHED/)) {
+    if (! this.props.status === "FINISHED: RunFlow") {
       link = this.props.text;
     }
-    var t = $.format.date(new Date(this.props.created + ' GMT'), 'yyyy-MM-dd HH:mm:ss');
+    var t = $.format.date(new Date(this.props.created), 'yyyy-MM-dd HH:mm:ss');
     return (
       <div className="search item">
         <time>{t}</time>
