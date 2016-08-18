@@ -7,7 +7,7 @@ var Search = React.createClass({
     var t = $.format.date(new Date(this.props.created), 'yyyy-MM-dd HH:mm:ss');
     return (
       <div className="search item">
-        <time>{t}</time>
+        {t}
         &nbsp;&nbsp;&nbsp;
         { link }
         &nbsp; by &nbsp;
