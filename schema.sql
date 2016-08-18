@@ -4,5 +4,6 @@ CREATE TABLE searches (
     text TEXT NOT NULL,
     date_path TEXT NOT NULL,
     twitter_user TEXT NOT NULL,
-    status TEXT
+    status TEXT,
+    created DATETIME DEFAULT CURRENT_TIMESTAMP
 );

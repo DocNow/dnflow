@@ -4,13 +4,16 @@ var Search = React.createClass({
     if (! this.props.status.match(/FINISHED/)) {
       link = this.props.text;
     }
+    var t = $.format.date(new Date(this.props.created + ' GMT'), 'yyyy-MM-dd HH:mm:ss');
     return (
       <div className="search item">
+        <time>{t}</time>
+        &nbsp;&nbsp;&nbsp;
         { link }
-        &nbsp;[
+        &nbsp; by &nbsp;
         <a href={"https://twitter.com/" + this.props.twitter_user}>
           {this.props.twitter_user}
-        </a>]
+        </a>
         &nbsp;({this.props.status})
       </div>
     );
@@ -26,7 +29,8 @@ var SearchList = React.createClass({
           id={search.id}
           date_path={search.date_path}
           status={search.status}
-          twitter_user={search.twitter_user}>
+          twitter_user={search.twitter_user}
+          created={search.created}>
 
         </Search>
       );
