@@ -54,9 +54,11 @@
                   {% endif %}
                 </p>
             </div>
+            {% if title %}
             <div class='row'>
                 <h1 class='item' id='title'>{{ title }}</h1>
             </div>
+            {% endif %}
             <div id='content'>
 {% block content %}
 {% endblock content %}
