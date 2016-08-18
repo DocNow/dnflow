@@ -1,10 +1,12 @@
 var Search = React.createClass({
   render: function() {
+    var link = <a href={"/summary/" + this.props.date_path}>{this.props.text}</a>;
+    if (! this.props.status.match(/FINISHED/)) {
+      link = this.props.text;
+    }
     return (
       <div className="search item">
-        <a href={"/summary/" + this.props.date_path}>
-          {this.props.text}
-        </a>
+        { link }
         &nbsp;[
         <a href={"https://twitter.com/" + this.props.twitter_user}>
           {this.props.twitter_user}

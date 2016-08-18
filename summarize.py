@@ -63,11 +63,13 @@ def generate_md5(fname, block_size=2**16):
     return m.hexdigest()
 
 
-def get_block_size(count):
-    """Given an integer count, deterine a useful block size at which
-    to post updates back to the server so users get a useful sense of
-    progress.  Should give 3 for n=200, 4 for n=2000, etc."""
-    return int(count / math.ceil(math.log10(count)))
+def get_block_size(n, d=1):
+    """
+    returns a block size to use when sending ui updates for a job. 
+    uses the number of items (n) and a dampening value (d), which is
+    useful for tasks that can take longer and require more updates
+    """
+    return int(n / (math.ceil(math.log10(n)) * d))
 
 
 class EventfulTask(luigi.Task):
@@ -350,7 +352,7 @@ class FetchMedia(EventfulTask):
             # drop one for headers
             count = sum(1 for line in countfile) - 1
         # determine update block size
-        update_block_size = get_block_size(count)
+        update_block_size = get_block_size(count, 5)
 
         dirname = 'data/%s/media' % self.search['date_path']
         os.makedirs(dirname, exist_ok=True)
@@ -398,7 +400,7 @@ class MatchMedia(EventfulTask):
         hashes = {}
         matches = []
         g = nx.Graph()
-        update_block_size = get_block_size(len(files))
+        update_block_size = get_block_size(len(files), 5)
         for i in range(len(files)):
             f = files[i]
             fn = 'data/%s/media/%s' % (date_path, f)
