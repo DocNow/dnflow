@@ -1,21 +1,17 @@
 var Search = React.createClass({
   render: function() {
     var link = <a href={"/summary/" + this.props.date_path}>{this.props.text}</a>;
-    if (! this.props.status === "FINISHED: RunFlow") {
+    if (! (this.props.status == "FINISHED: RunFlow")) {
       link = this.props.text;
     }
     var t = $.format.date(new Date(this.props.created), 'yyyy-MM-dd HH:mm:ss');
     return (
-      <div className="search item">
-        {t}
-        &nbsp;&nbsp;&nbsp;
-        { link }
-        &nbsp; by &nbsp;
-        <a href={"https://twitter.com/" + this.props.twitter_user}>
-          {this.props.twitter_user}
-        </a>
-        &nbsp;({this.props.status})
-      </div>
+      <tr className="search item">
+        <td>{t}</td>
+        <td>{link}</td>
+        <td><a href={"https://twitter.com/" + this.props.twitter_user}>{this.props.twitter_user}</a></td>
+        <td>{this.props.status}</td>
+      </tr>
     );
   }
 });
@@ -36,9 +32,19 @@ var SearchList = React.createClass({
       );
     });
     return (
-      <div className="searchList">
+      <table className="searchList">
+        <thead>
+          <tr>
+            <th>Created</th>
+            <th>Search</th>
+            <th>Creator</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
         {searchNodes}
-      </div>
+        </tbody>
+      </table>
     );
   }
 });
@@ -69,9 +75,13 @@ var SearchForm = React.createClass({
         terms: <input type='text'
           value={this.state.text}
           onChange={this.handleTextChange} />
+        &nbsp;
         count: <input type='text'
+          size="6"
+          maxSize="6"
           value={this.state.count}
           onChange={this.handleCountChange} />
+        &nbsp;
         <input type='submit' value='add' />
       </form>
     );
@@ -103,8 +113,9 @@ var SearchBox = React.createClass({
         this.setState({data: data});
       }.bind(this),
       error: function(xhr, status, err) {
-        this.setState({error: xhr.responseJSON.error});
-        console.error(this.props.url, status, err.toString());
+        if (xhr.responseJSON) {
+          this.setState({error: xhr.responseJSON.error});
+        }
       }.bind(this)
     });
   },
@@ -118,10 +129,9 @@ var SearchBox = React.createClass({
   render: function() {
     return (
       <div className="searchBox">
-        <h1>hi there</h1>
-        <h2>search something new</h2>
         <h3 style={{color: 'red'}}>{ this.state.error }</h3>
         <SearchForm onSearchSubmit={this.handleSearchSubmit} />
+        <br />
         <SearchList data={this.state.data} />
       </div>
     );
@@ -131,5 +141,5 @@ var SearchBox = React.createClass({
 
 ReactDOM.render(
   <SearchBox url="/api/searches/" pollInterval={2000} />,
-  document.getElementById('content')
+  document.getElementById('searches')
 );

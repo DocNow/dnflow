@@ -280,7 +280,6 @@ function chart(id, data, fieldname, searchPrefix) {
 
 d3.json("/api/searches", function(e, data) {
     if (e) return console.warn(e);
-    var comparisons = d3.select("#compare").append("ul");
 
     // remove the present search from the list for comparison
     data = data.filter(function(d) {
@@ -291,20 +290,22 @@ d3.json("/api/searches", function(e, data) {
         }
     });
 
-    var search_id = d3.select("#search_id").text();
-    comparisons.selectAll(".search")
+    var comparisons = d3.select("#compare");
+    comparisons.selectAll()
         .data(data)
-      .enter().append("li")
-        .append("a")
-          .attr("href", function(d) {
-              return "/summary/" + search_id + "/compare?ids=" + d.id;
-              })
-          .text(function(d) { return d.text; });
+      .enter().append("option")
+        .attr("value", function(d) { return d.id })
+        .text(function(d) { return d.text; });
+
+    $(".chosen-select").chosen();
 });
+
+
 </script>
 {% endblock javascript_extra %}
 
 {% block content %}
+<h1>&nbsp;&nbsp;{{ search.text }} by <a href="https://twitter.com/{{ search.twitter_user }}">{{ search.twitter_user }}</a></h1>
 <div class="row">
     <h2 class="item">
         <span style="display: none" id="search_id">{{ search.id }}</span>
@@ -319,7 +320,7 @@ d3.json("/api/searches", function(e, data) {
 <div class="row">
     <form class="item" action="/searches/" method="POST">
         terms: <input id="text" type="text" name="text" />
-        count: <input id="count" type="text" name="count" value="1000" size="8"/>
+        count: <input id="count" type="text" name="count" value="1000" size="8" maxsize="8"/>
         <input type="submit" value="add" />
     </form>
 </div>
@@ -348,19 +349,10 @@ d3.json("/api/searches", function(e, data) {
     </div>
 </div>
 <div class="row">
-    <div id="media" class="item">
-        <h3>Common images</h3>
-    </div>
-</div>
-<div class="row">
-    <div id="media-matches" class="item">
-        <h3>Matching images</h3>
-    </div>
-</div>
-<div class="row">
-    <div id="compare" class="item">
-        <h3>Compare with other searches</h3>
-    </div>
+    <form class="item" action="/summary/{{ search.id }}/compare" method="GET">
+      <input type="submit" value="compare with" />
+      <select data-placeholder="Choose a search" class="chosen-select" id="compare" name="id" multiple></select>
+    </form>
 </div>
 <div class="row">
     <div id="rawdata" class="item">
@@ -382,4 +374,14 @@ d3.json("/api/searches", function(e, data) {
     </div>
 </div>
 
+<div class="row">
+    <div id="media" class="item">
+        <h3>Common images</h3>
+    </div>
+</div>
+<div class="row">
+    <div id="media-matches" class="item">
+        <h3>Matching images</h3>
+    </div>
+</div>
 {% endblock content %}

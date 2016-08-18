@@ -130,7 +130,7 @@ def add_search():
     text = request.form.get('text', None)
     twitter_user = session.get('twitter_user', None)
     if not twitter_user:
-        response = jsonify({"error": "Please login!"})
+        response = jsonify({"error": "✋ please login first, thanks!"})
         response.status_code = 403
         return response
     try:
@@ -202,7 +202,7 @@ def summary_static_proxy(date_path, file_name):
 def summary_compare(search_id):
     search = query('SELECT * FROM searches WHERE id = ?', [search_id],
                    one=True)
-    compare_ids = request.args.get('ids', '')
+    compare_ids = request.args.getlist('id')
     return render_template('summary_compare.html', search=search,
                            compare_ids=compare_ids)
 
@@ -219,9 +219,7 @@ def api_searches():
 @app.route('/api/hashtags/<int:search_id>/', methods=['GET'])
 def hashtags_multi(search_id):
     ids = [search_id]
-    compare_ids = request.args.get('ids', '')
-    if compare_ids:
-        ids.extend([int(i) for i in compare_ids.split(',') if i.isdigit()])
+    ids.extend(request.args.getlist('id'))
     in_clause = ','.join([str(i) for i in ids])
     searches = query("""
         SELECT id, date_path, text

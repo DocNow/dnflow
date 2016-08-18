@@ -1,11 +1,14 @@
 {% extends "base.html" %}
 
-{% block javascript_extra %}
-<!--<script type="text/babel" src="/static/js/index.js" />-->
-{% endblock javascript_extra %}
-
-
 {% block content %}
+
+<h1>hi there 
+  {% if twitter_user %}
+  <a href="https://twitter.com/{{ twitter_user }}">{{ twitter_user }}</a>
+  {% endif %}
+</h1>
+<div id="searches">
+</div>
 
 <script type="text/babel" src="/static/js/index.js"></static>
 

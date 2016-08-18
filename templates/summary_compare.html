@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
 {% block style_css_extra %}
-body {
+#hashtags {
   font: 13px sans-serif;
 }
 
@@ -37,17 +37,18 @@ body {
 /* extract some vals from html; FIXME: awkward */
 var date_path = d3.select("#date_path").text();
 var search_id = d3.select("#search_id").text();
-var compare_ids = d3.select("#compare_ids").text();
 
 d3.json("/summary/" + date_path + "/summary.json", function(e, summary) {
     if (e) return console.warn(e);
     d3.select('#title').text("Compare: " + summary.term);
     d3.select('#date').text(summary.date);
-    var num_tweets = parseInt(summary.num_tweets);
-    d3.select('#num_tweets').text(num_tweets.toLocaleString());
+    d3.select('#search a')
+        .text(summary.term)
+        .attr('href', '/summary/' + summary.path);
 });
 
-var hashtags_multi_url = "/api/hashtags/" + search_id + "?ids=" + compare_ids;
+var hashtags_multi_url = "/api/hashtags/" + search_id + "/" + window.location.search;
+
 var resp;
 
 var margin = {top: 20, right: 20, bottom: 100, left: 40},
@@ -91,15 +92,12 @@ d3.json(hashtags_multi_url, function(e, data) {
     var other_searches = summary.filter(function(d) {
       return d.id != search_id;
     });
-    var search_list = d3.select("#search_list").append("div")
-      .attr("class", "row");
-    search_list.selectAll(".search")
-        .data(other_searches)
-      .enter().append("h3")
-        .attr("class", "item")
-        .append("a")
-        .attr("href", function(d) { return "/summary/" + d.date_path + "/"; })
-        .text(function(d) { return d.text; });
+  
+    $(other_searches).each(function(i, search) {
+      var url = "/summary/" + search.date_path + "/";
+      var a = $('<a href="' + url + '">' + search.text + '</a>');
+      $("#search_list").append(a).append(" ");
+    });
 
     /* limit the volume of hashtags to render - TODO: this is arbitrary */
     var hashtags = data.hashtags.slice(0, 25);
@@ -187,17 +185,11 @@ d3.json(hashtags_multi_url, function(e, data) {
 
 {% block content %}
 <div class="row">
+    <h1>Comparing <a href="/summary/{{ search.date_path }}">{{ search.text }}</a> with <span id="search_list"></span></h1>
     <h2 class="item">
         <span id="date_path" style="display:none;">{{ search.date_path }}</span>
-        <span id="compare_ids" style="display:none;">{{ compare_ids }}</span>
         <span id="search_id" style="display:none;">{{ search.id }}</span>
-        Comparing <span id="num_tweets"></span>
-        tweets collected on
-        <span id="date"></span>
-        with:
     </h2>
-</div>
-<div class="row" id="search_list">
 </div>
 <div class="row">
     <div id="hashtags" class="item">

@@ -6,24 +6,22 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>{{ title }}</title>
         {% block style_css %}
-        <link rel="stylesheet"
-        href="https://cdnjs.cloudflare.com/ajax/libs/normalize/4.1.1/normalize.min.css"
-        />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/4.1.1/normalize.min.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/chosen/1.6.2/chosen.css" />
+        <link rel="stylesheet" href="/static/css/style.css" />
         <style>
-.container {
-    margin: 1em;
-    border: none;
-}
-
-.row {
-    display: flex;
-}
-
-.item {
-    flex: 1;
-    margin: 1em;
-    border: none;
-}
+        .container {
+            margin: 1em;
+            border: none;
+        }
+        .row {
+            display: flex;
+        }
+        .item {
+            flex: 1;
+            margin: 1em;
+            border: none;
+        }
         {% endblock style_css %}
         {% block style_css_extra %}
         {% endblock style_css_extra %}
@@ -36,6 +34,8 @@
         <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-core/5.8.23/browser.min.js"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.2.0/jquery.min.js"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-dateFormat/1.0/jquery.dateFormat.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/chosen/1.6.2/chosen.jquery.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/URI.js/1.18.1/URI.min.js"></script>
         {% endblock javascript %}
     </head>
 
@@ -47,18 +47,11 @@
                   &nbsp; | &nbsp;
                   {% if twitter_user %}
                   <a href='/logout'>logout</a>
-                  &nbsp; | &nbsp;
-                  <a href="https://twitter.com/{{ twitter_user }}">{{ twitter_user }}</a>
                   {% else %}
                   <a href='/login'>login</a>
                   {% endif %}
                 </p>
             </div>
-            {% if title %}
-            <div class='row'>
-                <h1 class='item' id='title'>{{ title }}</h1>
-            </div>
-            {% endif %}
             <div id='content'>
 {% block content %}
 {% endblock content %}
