@@ -189,7 +189,7 @@ def job():
 def summary(date_path):
     search = query('SELECT * FROM searches WHERE date_path = ?', [date_path],
                    one=True)
-    return render_template('summary.html', search=search)
+    return render_template('summary.html', title=search['text'], search=search)
 
 
 @app.route('/summary/<date_path>/<path:file_name>', methods=['GET'])
