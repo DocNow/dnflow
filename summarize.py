@@ -69,6 +69,9 @@ def get_block_size(n, d=1):
     uses the number of items (n) and a dampening value (d), which is
     useful for tasks that can take longer and require more updates
     """
+    # this shouldn't happen but in case it does
+    if n < 0:
+        return 100
     return int(n / (math.ceil(math.log10(n)) * d))
 
 
