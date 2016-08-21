@@ -122,7 +122,7 @@ def inject_user():
 
 @app.route('/', methods=['GET'])
 def index():
-    return render_template('index.html')
+    return render_template('index.html', title='dnflow prototype home')
 
 
 @app.route('/searches/', methods=['POST'])
