@@ -70,7 +70,7 @@ def get_block_size(n, d=1, default=100):
     useful for tasks that can take longer and require more updates
     """
     # this shouldn't happen but in case it does
-    if n < 0:
+    if n <= 0:
         return default
     block_size = int(n / (math.ceil(math.log10(n)) * d))
     if block_size > 0:
