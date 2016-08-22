@@ -63,7 +63,7 @@ def generate_md5(fname, block_size=2**16):
     return m.hexdigest()
 
 
-def get_block_size(n, d=1):
+def get_block_size(n, d=1, default=100):
     """
     returns a block size to use when sending ui updates for a job. 
     uses the number of items (n) and a dampening value (d), which is
@@ -71,8 +71,11 @@ def get_block_size(n, d=1):
     """
     # this shouldn't happen but in case it does
     if n < 0:
-        return 100
-    return int(n / (math.ceil(math.log10(n)) * d))
+        return default
+    block_size = int(n / (math.ceil(math.log10(n)) * d))
+    if block_size > 0:
+        return block_size
+    return default
 
 
 class EventfulTask(luigi.Task):
