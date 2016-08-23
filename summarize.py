@@ -72,7 +72,10 @@ def get_block_size(n, d=1, default=100):
     # this shouldn't happen but in case it does
     if n <= 0:
         return default
-    block_size = int(n / (math.ceil(math.log10(n)) * d))
+    r = math.ceil(math.log10(n)) * d
+    if r == 0:
+        return default
+    block_size = int(n / r)
     if block_size > 0:
         return block_size
     return default
