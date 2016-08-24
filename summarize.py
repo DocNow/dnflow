@@ -3,6 +3,7 @@
 test.py - initial attempt at automating dn flows using luigi
 """
 
+import bisect
 from collections import Counter
 import csv
 import hashlib
@@ -636,6 +637,66 @@ class ExtractTweetIds(EventfulTask):
                 fh.write(tweet['id_str'] + "\n")
 
 
+class CountRetweets(EventfulTask):
+    search = luigi.DictParameter()
+
+    def requires(self):
+        return FetchTweets(search=self.search)
+
+    def output(self):
+        fname = self.input().fn.replace('tweets.json', 'retweets.csv')
+        return luigi.LocalTarget(fname)
+
+    def run(self):
+
+        class Retweet(object):
+            def __init__(self, id, count):
+                self.id = id
+                self.count = count
+            def __lt__(self, other):
+                # a trick to have bisect reverse sort
+                return self.count > other.count
+            def __repr__(self):
+                return "%s [%s]" % (self.id, self.count)
+
+        retweet_ids = set()
+        retweets = []
+
+        for tweet_str in self.input().open('r'):
+            tweet = json.loads(tweet_str)
+            retweet_count = tweet.get('retweet_count', 0)
+            if retweet_count == 0:
+                continue
+
+            if 'retweeted_status' in tweet:
+                tweet_id = tweet['retweeted_status']['id_str']
+            else:
+                tweet_id = tweet['id_str']
+
+            # ignore duplicate tweets
+            # NOTE: this only works for search data!
+            if tweet_id in retweet_ids:
+                continue
+
+            bisect.insort_right(
+                retweets,
+                Retweet(tweet_id, retweet_count)
+            )
+
+            retweet_ids.add(tweet_id)
+            if len(retweets) > 100:
+                rt = retweets.pop()
+                retweet_ids.remove(rt.id)
+
+        with self.output().open('w') as fh:
+            writer = csv.DictWriter(fh, delimiter=',',
+                                    quoting=csv.QUOTE_MINIMAL,
+                                    fieldnames=['tweet_id', 'count'])
+            writer.writeheader()
+            for rt in retweets:
+                writer.writerow({'tweet_id': rt.id, 'count': rt.count})
+
+            
 class RunFlow(EventfulTask):
     date_path = time_hash()
     jobid = luigi.IntParameter()
@@ -664,6 +725,7 @@ class RunFlow(EventfulTask):
         yield CountDomains(search=search)
         yield CountMentions(search=search)
         yield CountFollowers(search=search)
+        yield CountRetweets(search=search)
         yield FollowRatio(search=search)
         yield EdgelistMentions(search=search)
         yield PopulateRedis(search=search)
