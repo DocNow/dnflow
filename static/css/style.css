@@ -14,3 +14,9 @@ td {
     padding-right: 10px;
 }
 
+#disclaimer {
+  max-width: 600px;
+  background-color: #eee;
+  padding: 5px;
+  border: thin solid #ccc;
+}
