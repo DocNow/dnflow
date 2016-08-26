@@ -230,6 +230,13 @@ def feed():
     return resp
 
 
+@app.route('/robots.txt')
+def robots():
+    resp = make_response(render_template('robots.txt'))
+    resp.headers['Content-Type'] = 'text/plain'
+    return resp
+
+
 # api routes for getting data
 
 @app.route('/api/searches/', methods=['GET'])
