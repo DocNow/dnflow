@@ -142,7 +142,7 @@ twttr.ready(function() {
           var id = data[i].tweet_id;
           $("#retweets").append('<div id="tweet-' + id + '"></div>');
           twttr.widgets.createTweet(id, document.getElementById('tweet-' + id), {"cards": "hidden"});
-          if (i > 50) break;
+          if (i > 10) break;
       };
   });
 });
