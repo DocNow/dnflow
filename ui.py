@@ -2,7 +2,7 @@ import logging
 import sqlite3
 
 from flask_oauthlib.client import OAuth
-from flask import g, jsonify, request, redirect, session, flash
+from flask import g, jsonify, request, redirect, session, flash, make_response
 from flask import Flask, render_template, url_for, send_from_directory
 import pandas as pd
 import redis
@@ -205,6 +205,29 @@ def summary_compare(search_id):
     compare_ids = request.args.getlist('id')
     return render_template('summary_compare.html', search=search,
                            compare_ids=compare_ids)
+
+
+@app.route('/feed/')
+def feed():
+    searches = query('SELECT * FROM searches ORDER BY id DESC', json=True)
+    site_url = 'http://' + app.config['HOSTNAME']
+    feed_url = site_url + '/feed/'
+    def add_url(s):
+        s['url'] = site_url + '/summary/' + s['date_path'] + '/'
+        return s
+    searches = map(_date_format, searches)
+    searches = list(map(add_url, searches))
+    resp = make_response(
+        render_template(
+            'feed.xml', 
+            updated=searches[0]['created'],
+            site_url=site_url,
+            feed_url=feed_url,
+            searches=searches
+        )
+    )
+    resp.headers['Content-Type'] = 'application/atom+xml'
+    return resp
 
 
 # api routes for getting data
