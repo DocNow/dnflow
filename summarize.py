@@ -230,8 +230,7 @@ class CountUrls(EventfulTask):
         c = Counter()
         for tweet_str in self.input().open('r'):
             tweet = json.loads(tweet_str)
-            c.update([url['expanded_url'].lower()
-                      for url in tweet['entities']['urls']])
+            c.update([url['expanded_url'] for url in tweet['entities']['urls']])
         with self.output().open('w') as fp_counts:
             writer = csv.DictWriter(fp_counts, delimiter=',',
                                     quoting=csv.QUOTE_MINIMAL,
