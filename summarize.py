@@ -152,9 +152,10 @@ class FetchTweets(EventfulTask):
             access_token=self.search['token'],
             access_token_secret=self.search['secret']
         )
+        open('foo', 'w').write(term)
         with self.output().open('w') as fh:
             i = 0
-            for tweet in t.search(term, lang=lang):
+            for tweet in t.search(term):
                 i += 1
                 if i > count:
                     break
