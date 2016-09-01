@@ -161,7 +161,8 @@ def add_search():
                 count,
                 session['twitter_token'][0],
                 session['twitter_token'][1]
-            )
+            ),
+            timeout=app.config['MAX_TIMEOUT']
         )
         logging.debug('job: %s' % job)
     return redirect(url_for('index'))
