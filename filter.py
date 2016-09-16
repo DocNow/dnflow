@@ -1,14 +1,22 @@
 #!/usr/bin/env python
 
 """
-Store a filterstream in a series of JSON files.
-"""
+Store a filterstream in a series of JSON files.  These are created
+as tempfiles and moved to the target dir when appending is finished
+to accommodate Spark Streaming's requirements for watching folders.
+See:
 
+http://spark.apache.org/docs/latest/streaming-programming-guide.html#basic-sources
+
+...for details.
+"""
 
 import argparse
 import json
 import logging
 import os
+import shutil
+import tempfile
 import time
 
 from twarc import Twarc
@@ -68,15 +76,16 @@ if __name__ == '__main__':
     fname_base = '%s/%s' % (args.dir, time_now_filename())
     tweet_counter = 0
     fname = '%s-%03d.json' % (fname_base, file_counter)
-    fp = open(fname, 'w')
+    fp = tempfile.NamedTemporaryFile('w', buffering=True, delete=False)
     for tweet in t.search(args.track_terms):
         tweet_counter += 1
         fp.write(json.dumps(tweet) + '\n')
         if time.time() - time_start > args.interval:
             fp.close()
+            shutil.move(fp.name, fname)
             logging.debug('Wrote %s tweets to %s' % (tweet_counter, fname))
             time_start = time.time()
             tweet_counter = 0
             file_counter += 1
-            fp = open(fname, 'w')
+            fp = tempfile.NamedTemporaryFile('w', buffering=True, delete=False)
             fname = '%s-%03d.json' % (fname_base, file_counter)
