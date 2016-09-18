@@ -1,5 +1,7 @@
+import datetime
 import logging
 import sqlite3
+import time
 
 from flask_oauthlib.client import OAuth
 from flask import g, jsonify, request, redirect, session, flash, make_response
@@ -26,6 +28,7 @@ q = Queue(connection=redis_conn)
 
 logging.getLogger().setLevel(logging.DEBUG)
 
+ONE_MINUTE_OFFSET = pd.tseries.offsets.DateOffset(minutes=1)
 
 # twitter authentication
 
@@ -45,7 +48,8 @@ twitter = oauth.remote_app('twitter',
 @app.route('/login')
 def login():
     next = request.args.get('next') or request.referrer or None
-    callback_url = 'http://' + app.config['HOSTNAME'] + url_for('oauth_authorized', next=next)
+    callback_url = 'http://' + app.config['HOSTNAME'] + \
+        url_for('oauth_authorized', next=next)
     return twitter.authorize(callback=callback_url)
 
 
@@ -224,7 +228,7 @@ def feed():
     searches = list(map(add_url, searches))
     resp = make_response(
         render_template(
-            'feed.xml', 
+            'feed.xml',
             updated=searches[0]['created'],
             site_url=site_url,
             feed_url=feed_url,
@@ -289,6 +293,29 @@ def hashtags(date_path):
 def mentions(date_path):
     d = _count_entities(date_path, 'mentions', 'screen_name')
     return jsonify(d)
+
+
+@app.route('/api/stream/hashtags_recent/', methods=['GET'])
+def hashtags_recent():
+    try:
+        mins = int(request.args.get('mins', 60))
+        num = int(request.args.get('num', 25))
+    except:
+        mins = 60
+        num = 25
+
+    # generate list of mins keys to combine
+    # TODO: awkward? something simpler that handles hour/day boundaries?
+    st_now = time.gmtime()
+    dt_now = datetime.datetime(st_now.tm_year, st_now.tm_mon, st_now.tm_mday,
+                               st_now.tm_hour, st_now.tm_min)
+    dt_list = [dt_now - (i * ONE_MINUTE_OFFSET) for i in range(mins)]
+    key_list = ['stream:hashtag:%02d%02d' % (dt.hour, dt.minute)
+                for dt in dt_list]
+    union_key = 'stream:hashtag:last%03d' % mins
+    redis_conn.zunionstore(union_key, key_list)
+    result = redis_conn.zrevrange(union_key, 0, num, withscores=True)
+    return jsonify(result)
 
 
 def _count_entities(date_path, entity, attrname):
