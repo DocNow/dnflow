@@ -139,6 +139,7 @@ if __name__ == '__main__':
     tweet_counter = 0
     fname = '%s-%03d.json' % (fname_base, file_counter)
     fp = tempfile.NamedTemporaryFile('w', buffering=True, delete=False)
+    # FIXME: track is hard-coded
     for tweet in t.filter(track=args.track_terms):
         tweet_counter += 1
         fp.write(json.dumps(tweet) + '\n')

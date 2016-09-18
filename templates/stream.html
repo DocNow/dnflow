@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+
+{% block javascript_extra %}
+<script type="text/javascript">
+function update(data, selection) {
+  var t = d3.transition()
+    .duration(1500);
+
+  // data.sort(function(a, b) { return b[1] - a[1]; });
+
+  var items = selection.selectAll("li")
+    .data(data, function(d) { return d; });
+
+  items.exit()
+    .transition(t)
+      .style("opacity", 1e-6)
+      .remove();
+
+  items.enter().append("li")
+      .attr("id", function(d) { return "hashtag-" + d[0]; })
+      .style("opacity", 1e-6)
+    .transition(t)
+      .style("opacity", 1)
+      .text(function(d) { return d[0] + ": " + d[1]; });
+
+  items.sort(function(a, b) { return b[1] - a[1]; })
+      ; //.transition(500);
+};
+
+// d3 v4 has an interval() function on d3-timer
+setInterval(function() {
+    d3.json('/api/stream/hashtags_recent?mins=2&num=25', function(e, data) {
+      if (e) return console.warn(e);
+      update(data, d3.select("#last2"));
+    });
+}, 3000);
+
+setInterval(function() {
+    d3.json('/api/stream/hashtags_recent?mins=5&num=25', function(e, data) {
+      if (e) return console.warn(e);
+      update(data, d3.select("#last5"));
+    });
+}, 3000);
+
+setInterval(function() {
+    d3.json('/api/stream/hashtags_recent?mins=10&num=25', function(e, data) {
+      if (e) return console.warn(e);
+      update(data, d3.select("#last10"));
+    });
+}, 3000);
+</script>
+{% endblock javascript_extra %}
+
+{% block content %}
+<h1>Stream: recent hashtags</h1>
+
+<div class='row'>
+  <div class='item'>
+    <h2>Top hashtags, last 2min</h2>
+    <ul id='last2' />
+  </div>
+
+  <div class='item'>
+    <h2>Top hashtags, last 5min</h2>
+    <ul id='last5' />
+  </div>
+
+  <div class='item'>
+    <h2>Top hashtags, last 10min</h2>
+    <ul id='last10' />
+  </div>
+</div>
+{% endblock content %}

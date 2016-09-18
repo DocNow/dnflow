@@ -88,6 +88,7 @@ def get_twitter_token(token=None):
 def send_static(path):
     return send_from_directory('/static', path)
 
+
 @app.errorhandler(404)
 def page_not_found(error):
     return 'This route does not exist {}'.format(request.url), 404
@@ -216,6 +217,11 @@ def summary_compare(search_id):
                            compare_ids=compare_ids)
 
 
+@app.route('/stream', methods=['GET'])
+def stream():
+    return render_template('stream.html')
+
+
 @app.route('/feed/')
 def feed():
     searches = query('SELECT * FROM searches ORDER BY id DESC', json=True)
@@ -297,14 +303,16 @@ def mentions(date_path):
 
 @app.route('/api/stream/hashtags_recent/', methods=['GET'])
 def hashtags_recent():
+    """Generate a redis zunionstore based on union of hashtag keys for
+    mins minutes and return num top hashtags."""
     try:
         mins = int(request.args.get('mins', 60))
-        num = int(request.args.get('num', 25))
+        num = int(request.args.get('num', 24)) - 1
     except:
         mins = 60
-        num = 25
+        num = 24
 
-    # generate list of mins keys to combine
+    # generate list of min keys to combine
     # TODO: awkward? something simpler that handles hour/day boundaries?
     st_now = time.gmtime()
     dt_now = datetime.datetime(st_now.tm_year, st_now.tm_mon, st_now.tm_mday,
