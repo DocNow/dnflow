@@ -1,40 +1,160 @@
 {% extends "base.html" %}
 
+{% block style_css_extra %}
+.row {
+  display: flex;
+  flex-direction: row;
+}
+.item {
+  order: 1;
+}
+.bar {
+	fill: #eaeaea;
+}
+text.label {
+	fill: #555555;
+	color: #555555;
+	font-size: 13px;
+	font-weight: bold;
+}
+text.category {
+	fill: #333333;
+	font-size: 13px;
+}
+{% endblock style_css_extra %}
+
+
 {% block javascript_extra %}
 <script type="text/javascript">
-function update(data, selection) {
-  var t = d3.transition()
-    .duration(1500);
+// much of this is from http://bl.ocks.org/charlesdguthrie/11356441
+var setup = function(dom_id) {
+  var margin = {top: 0, right: 0, bottom: 0, left: 0},
+    width = 380 - margin.left - margin.right,
+    height = 600 - margin.top - margin.bottom,
+    category_indent = 4 * 15 + 5,
+    default_bar_width = 2000;
 
-  // data.sort(function(a, b) { return b[1] - a[1]; });
+  var x = d3.scale.linear()
+    .domain([0, default_bar_width])
+    .range([0, width]);
+  var y = d3.scale.ordinal()
+    .rangeRoundBands([0, height], 0.1, 0);
 
-  var items = selection.selectAll("li")
-    .data(data, function(d) { return d; });
+  d3.select(dom_id).selectAll("svg").remove();
+  var svg = d3.select(dom_id).append("svg")
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom)
+    .append("g")
+    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
-  items.exit()
-    .transition(t)
-      .style("opacity", 1e-6)
-      .remove();
+  var settings = {margin: margin, width: width, height: height,
+    category_indent: category_indent, svg: svg, x: x, y: y};
+  return settings;
+}
 
-  items.enter().append("li")
-      .attr("id", function(d) { return "hashtag-" + d[0]; })
-      .style("opacity", 1e-6)
-    .transition(t)
-      .style("opacity", 1)
-      .text(function(d) { return d[0] + ": " + d[1]; });
+var update = function(settings, new_data) {
+  var margin = settings.margin,
+    width = settings.width,
+    height = settings.height,
+    category_indent = settings.category_indent,
+    svg = settings.svg,
+    x = settings.x,
+    y = settings.y;
 
-  items.sort(function(a, b) { return b[1] - a[1]; })
-      ; //.transition(500);
+  y.domain(new_data.sort(function(a, b) { return b[1] - a[1]; })
+    .map(function(d) { return d[0] }));
+  var bar_max = d3.max(new_data, function(d) { return d[1]; });
+  x.domain([0, bar_max]);
+
+  // ENTER
+  var row = svg.selectAll("g.chart_row")
+    .data(new_data, function(d) { return d[0]; });
+  var new_row = row.enter().append("g")
+      .attr("class", "chart_row")
+      .attr("transform", "translate(0," + (height + margin.top + margin.bottom) + ")");
+
+  new_row.insert("rect")
+      .attr("class", "bar")
+      .attr("x", 0)
+      .attr("opacity", 0)
+      .attr("height", y.rangeBand())
+      .attr("width", function(d) { return x(d[1]); });
+
+  new_row.append("text")
+      .attr("class", "label")
+      .attr("x", 0)
+      .attr("dx", ".35em")
+      .attr("y", y.rangeBand() / 2)
+      .attr("dy", "0.4em")
+      .attr("opacity", 0)
+      .text(function(d) { return d[1]; });
+
+  new_row.append("text")
+      .attr("class", "category")
+  	  .attr("text-overflow", "ellipsis")
+  	  .attr("x", category_indent)
+  	  .attr("dx", "0.5em")
+  	  .attr("y", y.rangeBand() / 2)
+  	  .attr("dy", "0.3em")
+  	  .attr("opacity", 0)
+  	  .text(function(d) { return d[0]; });
+
+  // UPDATE
+  row.select(".bar").transition()
+    .duration(300)
+    .attr("width", function(d) { return x(d[1]); })
+    .attr("opacity", 1);
+
+  row.select(".label").transition()
+    .duration(300)
+    .attr("opacity", 1)
+    .text(function(d) { return d[1]; });
+
+  row.select(".category").transition()
+    .duration(300)
+    .attr("opacity", 1);
+
+  // EXIT
+  row.exit().transition()
+    .style("opacity", "0")
+    .attr("transform", "translate(0," + (height + margin.top + margin.bottom) + ")")
+	  .remove();
+
+  // REORDER
+  row.transition()
+    .delay(function(d, i) { return 200 + i * 30; })
+    .duration(900)
+    .attr("transform", function(d){ return "translate(0," + y(d[0]) + ")"; });
 };
 
-// d3 v4 has an interval() function on d3-timer
+var pull_data = function(settings, mins) {
+  url = '/api/stream/hashtags_recent?mins=' + mins + '&num=25';
+  d3.json(url, function(e, data) {
+    if (e) return console.warn(e);
+    update(settings, data);
+  })
+};
+
+var redraw = function(settings, mins) {
+  pull_data(settings, mins);
+};
+
+var settings_2 = setup("#last2");
+redraw(settings_2, 2);
+
+var settings_5 = setup("#last5");
+redraw(settings_5, 5);
+
+var settings_10 = setup("#last10");
+redraw(settings_10, 10);
+
 setInterval(function() {
-    d3.json('/api/stream/hashtags_recent?mins=2&num=25', function(e, data) {
-      if (e) return console.warn(e);
-      update(data, d3.select("#last2"));
-    });
+  redraw(settings_2, 2);
+  redraw(settings_5, 5);
+  redraw(settings_10, 10);
 }, 3000);
 
+/*
 setInterval(function() {
     d3.json('/api/stream/hashtags_recent?mins=5&num=25', function(e, data) {
       if (e) return console.warn(e);
@@ -48,26 +168,30 @@ setInterval(function() {
       update(data, d3.select("#last10"));
     });
 }, 3000);
+*/
 </script>
 {% endblock javascript_extra %}
 
 {% block content %}
-<h1>Stream: recent hashtags</h1>
+
+<div class='row'>
+  <h1 class='item'>Stream: top recent hashtags</h1>
+</div>
 
 <div class='row'>
   <div class='item'>
-    <h2>Top hashtags, last 2min</h2>
-    <ul id='last2' />
+    <h2>Last 2min</h2>
+    <p id='last2' />
   </div>
 
   <div class='item'>
-    <h2>Top hashtags, last 5min</h2>
-    <ul id='last5' />
+    <h2>Last 5min</h2>
+    <p id='last5' />
   </div>
 
   <div class='item'>
-    <h2>Top hashtags, last 10min</h2>
-    <ul id='last10' />
+    <h2>Last 10min</h2>
+    <p id='last10' />
   </div>
 </div>
 {% endblock content %}

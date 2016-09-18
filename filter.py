@@ -47,6 +47,7 @@ app.config.from_pyfile('dnflow.cfg')
 redis_conn = redis.StrictRedis(
     host=app.config['REDIS_HOST'],
     port=app.config['REDIS_PORT'],
+    db=app.config['REDIS_DB'],
     charset='utf-8',
     decode_responses=True
 )
@@ -92,6 +93,9 @@ if __name__ == '__main__':
                         default=None, help="Twitter API access token secret")
     parser.add_argument('--verbose', default=False, action='store_true',
                         help='verbose debugging output')
+    parser.add_argument('--flushdb', dest='flushdb', default=False,
+                        action='store_true',
+                        help='flush the redis db before starting (BE CAREFUL)')
     args = parser.parse_args()
 
     try:
@@ -101,6 +105,9 @@ if __name__ == '__main__':
 
     if not args.track_terms:
         parser.error('Enter some terms to track')
+
+    if args.flushdb:
+        redis_conn.flushdb()
 
     # Set up spark; pyspark defaults to python2.7 if we don't tell it
     # otherwise
