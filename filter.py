@@ -62,9 +62,11 @@ def process_tweets(tweet_rdd):
     # time if we do anything more than just count tweets
     tweet_json = tweet_rdd.map(lambda line: json.loads(line)) \
         .cache()
+    # note: sometimes there are no entities.hashtags
     hashtag_counts = tweet_json.flatMap(
         lambda tweet: [(ht['text'].lower(), 1)
-                       for ht in tweet['entities']['hashtags']]) \
+                       for ht in tweet.get('entities',
+                                           {'hashtags': []})['hashtags']]) \
         .reduceByKey(lambda a, b: a + b) \
         .collect()
     pipe = redis_conn.pipeline()
@@ -115,7 +117,7 @@ if __name__ == '__main__':
     sc = SparkContext()
     ssc = StreamingContext(sc, app.config['SPARK_BATCH_INTERVAL'])
     # startup overhead can take a little while
-    time.sleep(15)
+    time.sleep(5)
 
     # Spark's streaming will watch for new files in args.dir
     incoming_tweets = ssc.textFileStream(args.dir)

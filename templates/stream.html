@@ -11,8 +11,16 @@
 .bar {
 	fill: #eaeaea;
 }
-.selected rect {
-  fill: #F3E9A5;
+.frame {
+  fill: #ffffff;
+}
+.selected .frame {
+  fill: #f3e9a5;
+  opacity: 0.5;
+}
+.selected .bar {
+  fill: #f3e9a5;
+  opacity: 1;
 }
 .selected text {
 	color: #000000;
@@ -87,6 +95,13 @@ var update = function(settings, new_data) {
         d3.selectAll(".hashtag_" + d[0])
           .classed("selected", false)
       })
+
+  // framing rect for selection highlights
+  new_row.insert("rect")
+      .attr("class", "frame")
+      .attr("x", 0)
+      .attr("height", y.rangeBand())
+      .attr("width", width);
 
   new_row.insert("rect")
       .attr("class", "bar")
