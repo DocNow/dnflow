@@ -11,6 +11,13 @@
 .bar {
 	fill: #eaeaea;
 }
+.selected rect {
+  fill: #F3E9A5;
+}
+.selected text {
+	color: #000000;
+  font-weight: bold;
+}
 text.label {
 	fill: #555555;
 	color: #555555;
@@ -70,8 +77,16 @@ var update = function(settings, new_data) {
   var row = svg.selectAll("g.chart_row")
     .data(new_data, function(d) { return d[0]; });
   var new_row = row.enter().append("g")
-      .attr("class", "chart_row")
-      .attr("transform", "translate(0," + (height + margin.top + margin.bottom) + ")");
+      .attr("class", function(d) { return "chart_row " + "hashtag_" + d[0]; })
+      .attr("transform", "translate(0," + (height + margin.top + margin.bottom) + ")")
+      .on("mouseover", function(d) {
+        d3.selectAll(".hashtag_" + d[0])
+          .classed("selected", true)
+      })
+      .on("mouseout", function(d) {
+        d3.selectAll(".hashtag_" + d[0])
+          .classed("selected", false)
+      })
 
   new_row.insert("rect")
       .attr("class", "bar")
