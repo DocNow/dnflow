@@ -120,6 +120,11 @@ def inject_user():
     return dict(twitter_user=session.get('twitter_user', None))
 
 
+@app.context_processor
+def inject_analytics():
+    return dict(google_analytics=app.config.get('GOOGLE_ANALYTICS'))
+
+
 @app.route('/', methods=['GET'])
 def index():
     return render_template('index.html', title='dnflow prototype home')
