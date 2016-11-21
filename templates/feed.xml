@@ -13,8 +13,8 @@
         <id>{{ search.url }}</id>
         <link rel="alternate" type="text/html" href="{{ search.url }}" />
         <title>{{ search.text }}</title>
-        <content>{{ search.twitter_user }} created a collection for {{ search.text }}</content>
-        <updated>{{ search.created }}</updated>
+        <content>{{ search.user }} created a collection for {{ search.text }}</content>
+        <updated>{{ search.published }}</updated>
     </entry>
     {% endif %}{% endfor %}
 </feed>

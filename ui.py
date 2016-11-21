@@ -3,7 +3,7 @@ import sqlite3
 
 from flask_oauthlib.client import OAuth
 from flask import g, jsonify, request, redirect, session, flash, make_response
-from flask import Flask, render_template, url_for, send_from_directory
+from flask import Flask, render_template, url_for, send_from_directory, abort
 import pandas as pd
 import redis
 from rq import Queue
@@ -105,7 +105,7 @@ def query(sql, args=(), one=False, json=False):
     c.close()
     if json:
         return [{k: r[k] for k in r.keys()} for r in rv]
-    return (rv[0] if rv else None) if one else rv
+    return (dict(rv[0]) if rv else None) if one else rv
 
 
 @app.teardown_request
@@ -133,8 +133,8 @@ def index():
 @app.route('/searches/', methods=['POST'])
 def add_search():
     text = request.form.get('text', None)
-    twitter_user = session.get('twitter_user', None)
-    if not twitter_user:
+    user = session.get('twitter_user', None)
+    if not user:
         response = jsonify({"error": "✋ please login first, thanks!"})
         response.status_code = 403
         return response
@@ -145,10 +145,10 @@ def add_search():
         count = 1000
     if text:
         sql = '''
-            INSERT INTO searches (text, date_path, twitter_user)
+            INSERT INTO searches (text, date_path, user)
             VALUES (?, ?, ?)
             '''
-        query(sql, [request.form['text'], '', session['twitter_user']])
+        query(sql, [request.form['text'], '', user])
         g.db.commit()
         r = query(sql='SELECT last_insert_rowid() AS job_id FROM searches',
                   one=True)
@@ -192,8 +192,13 @@ def job():
 
 @app.route('/summary/<date_path>/', methods=['GET'])
 def summary(date_path):
+    user = session.get('twitter_user', None)
     search = query('SELECT * FROM searches WHERE date_path = ?', [date_path],
                    one=True)
+
+    if not search['published'] and user != search['user']:
+        abort(401)
+
     return render_template('summary.html', title=search['text'], search=search)
 
 
@@ -214,7 +219,12 @@ def summary_compare(search_id):
 
 @app.route('/feed/')
 def feed():
-    searches = query('SELECT * FROM searches ORDER BY id DESC', json=True)
+    searches = query(
+        '''
+        SELECT * FROM searches 
+        WHERE published IS NOT NULL 
+        ORDER BY id DESC
+        ''', json=True)
     site_url = 'http://' + app.config['HOSTNAME']
     feed_url = site_url + '/feed/'
     def add_url(s):
@@ -246,9 +256,46 @@ def robots():
 
 @app.route('/api/searches/', methods=['GET'])
 def api_searches():
-    searches = query('SELECT * FROM searches ORDER BY id DESC', json=True)
-    searches = list(map(_date_format, searches))
+    user = session.get('twitter_user', None)
+    q = '''
+        SELECT * 
+        FROM searches 
+        WHERE user = ?
+          OR published IS NOT NULL
+        ORDER BY id DESC
+        '''
+    searches = query(q, [user], json=True)
+    searches = {
+        "user": user,
+        "searches": list(map(_date_format, searches))
+    }
     return jsonify(searches)
+
+
+@app.route('/api/search/<int:search_id>', methods=["GET", "PUT", "DELETE"])
+def search(search_id):
+    search = query('SELECT * FROM searches WHERE id = ?', [search_id], one=True)
+    if not search:
+        abort(404)
+
+    # they must own the search to modify it
+    user = session.get('twitter_user', None)
+    if request.method in ['PUT', 'DELETE'] and search['user'] != user:
+        abort(401)
+
+    if request.method == 'PUT':
+        new_search = request.get_json()
+        if new_search['published']:
+            query("UPDATE searches SET published = CURRENT_TIMESTAMP WHERE id = ? AND published IS NULL", [search_id])
+        elif not new_search['published']:
+            query("UPDATE searches SET published = NULL WHERE id = ?",
+                  [search_id])
+        g.db.commit()
+    elif request.method == 'DELETE':
+        query("DELETE FROM searches WHERE id = ?", [search_id])
+        g.db.commit()
+
+    return jsonify(_date_format(search))
 
 
 @app.route('/api/hashtags/<int:search_id>/', methods=['GET'])
@@ -303,12 +350,13 @@ def _count_entities(date_path, entity, attrname):
 
 
 def _date_format(row):
-    t = row['created']
-    t = t.replace(' ', 'T')
-    t += 'Z'
-    row['created'] = t
+    for name in ['created', 'published']:
+        t = row[name]
+        if t:
+            t = t.replace(' ', 'T')
+            t += 'Z'
+            row[name] = t
     return row
-
 
 
 if __name__ == '__main__':

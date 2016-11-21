@@ -1,16 +1,66 @@
 var Search = React.createClass({
+  put: function(change) {
+    $.ajax({
+      type: 'PUT',
+      url: '/api/search/' + this.props.id,
+      data: JSON.stringify(change),
+      dataType: 'json',
+      contentType: 'application/json'
+    });
+  },
+  unpublish: function() {
+    this.put({id: this.props.id, published: false});
+  },
+  publish: function() {
+    this.put({id: this.props.id, published: true});
+  },
+  remove: function() {
+    $.ajax({
+      type: 'DELETE',
+      url: '/api/search/' + this.props.id,
+      data: JSON.stringify({}),
+      dataType: 'json',
+      contentType: 'application/json'
+    });
+  }, 
   render: function() {
     var link = <a href={"/summary/" + this.props.date_path}>{this.props.text}</a>;
     if (! (this.props.status == "FINISHED: RunFlow")) {
       link = this.props.text;
     }
+
     var t = $.format.date(new Date(this.props.created), 'yyyy-MM-dd HH:mm:ss');
+    var p = $.format.date(new Date(this.props.published), 'yyyy-MM-dd HH:mm:ss');
+
+    if (this.props.canModify) {
+      if (this.props.published) {
+        var publishButton =
+          <button
+            onClick={ this.unpublish } 
+            className="unpublish">Unpublish</button>;
+      } else {
+        var publishButton = 
+          <button
+            onClick={ this.publish }
+            className="publish">Publish</button>;
+      }
+      var buttons =
+        <td>
+          { publishButton }
+          <button 
+            onClick={this.remove}
+            className="delete">Delete</button>
+        </td>
+    }
+
     return (
       <tr className="search item">
-        <td>{t}</td>
+        <td>{ formatDateTime(this.props.created) }</td>
         <td>{link}</td>
-        <td><a href={"https://twitter.com/" + this.props.twitter_user}>{this.props.twitter_user}</a></td>
+        <td><a href={"https://twitter.com/" + this.props.user}>{this.props.user}</a></td>
+        <td>{ formatDateTime(this.props.published) }</td>
         <td>{this.props.status}</td>
+        { buttons }
       </tr>
     );
   }
@@ -18,15 +68,22 @@ var Search = React.createClass({
 
 var SearchList = React.createClass({
   render: function() {
-    var searchNodes = this.props.data.map(function(search) {
+    var user = this.props.user;
+    var includePublished = this.props.includePublished;
+    var searches = this.props.searches.filter(function(search) {
+      return (search.user == user) || (search.published && includePublished);
+    });
+    var searchNodes = searches.map(function(search) {
       return (
         <Search text={search.text}
           key={search.id}
           id={search.id}
           date_path={search.date_path}
           status={search.status}
-          twitter_user={search.twitter_user}
-          created={search.created}>
+          user={search.user}
+          canModify={search.user == user} 
+          created={search.created}
+          published={search.published}>
 
         </Search>
       );
@@ -38,7 +95,9 @@ var SearchList = React.createClass({
             <th>Created</th>
             <th>Search</th>
             <th>Creator</th>
-            <th>Status</th>
+            <th>Published</th>
+            <th>Job Status</th>
+            <th className="actions">Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -72,17 +131,17 @@ var SearchForm = React.createClass({
   render: function() {
     return (
       <form className="searchForm" onSubmit={this.handleSubmit}>
-        terms: <input type='text'
+        search: <input type='text'
           value={this.state.text}
           onChange={this.handleTextChange} />
         &nbsp;
-        count: <input type='text'
+        num tweets: <input type='text'
           size="6"
           maxSize="6"
           value={this.state.count}
           onChange={this.handleCountChange} />
         &nbsp;
-        <input type='submit' value='add' />
+        <input type='submit' value='create dataset!' />
       </form>
     );
   }
@@ -95,12 +154,15 @@ var SearchBox = React.createClass({
       dataType: 'json',
       cache: false,
       success: function(data) {
-        this.setState({data: data});
+        this.setState({searches: data.searches, user: data.user});
       }.bind(this),
       error: function(xhr, status, err) {
         console.error(this.props.url, status, err.toString());
       }.bind(this)
     });
+  },
+  handleIncludePublishedChange: function(e) {
+    this.setState({includePublished: e.target.checked});
   },
   handleSearchSubmit: function(search) {
     $.ajax({
@@ -110,7 +172,7 @@ var SearchBox = React.createClass({
       type: 'POST',
       data: search,
       success: function(data) {
-        this.setState({data: data});
+        this.setState({searches: data.searches, user: data.user});
       }.bind(this),
       error: function(xhr, status, err) {
         if (xhr.responseJSON) {
@@ -120,24 +182,47 @@ var SearchBox = React.createClass({
     });
   },
   getInitialState: function() {
-    return {data: []};
+    return {searches: [], user: null, includePublished: true};
   },
   componentDidMount: function() {
     this.loadSearchesFromServer();
     setInterval(this.loadSearchesFromServer, this.props.pollInterval);
   },
   render: function() {
+    if (this.state.user) {
+      var includePublished = 
+          <div id="includePublished">
+            include datasets published by others? 
+            &nbsp;
+            <input type='checkbox' 
+              checked={this.state.includePublished}
+              onChange={this.handleIncludePublishedChange} />
+          </div>
+    } else {
+      var includePublished = null;
+    }
     return (
       <div className="searchBox">
         <h3 style={{color: 'red'}}>{ this.state.error }</h3>
         <SearchForm onSearchSubmit={this.handleSearchSubmit} />
         <br />
-        <SearchList data={this.state.data} />
+        { includePublished }
+        <SearchList 
+          includePublished={this.state.includePublished}
+          user={this.state.user}
+          searches={this.state.searches} />
       </div>
     );
   }
 });
 
+function formatDateTime(t) {
+    if (t) {
+        return $.format.date(new Date(t), 'yyyy-MM-dd HH:mm:ss');
+    } else {
+        return null;
+    }
+}
 
 ReactDOM.render(
   <SearchBox url="/api/searches/" pollInterval={2000} />,

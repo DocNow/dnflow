@@ -2,16 +2,30 @@ body {
     margin: 1em;
 }
 
+.searchList {
+}
+
 table {
     text-align: left;
+    width: 1200px;
 }
 
 th {
     padding 5px;
+    width: 15%;
+}
+
+th.status {
+  width: 20%;
+}
+
+th.actions {
+  width: 20%;
 }
 
 td {
-    padding-right: 10px;
+  padding-right: 10px;
+  padding-bottom: 5px;
 }
 
 .disclaimer {
@@ -19,4 +33,32 @@ td {
   background-color: #eee;
   padding: 5px;
   border: thin solid #ccc;
+}
+
+.searchForm {
+  padding: 5px;
+}
+
+#includePublished {
+  font-size: 12pt;
+  font-style: italic;
+  padding: 3px;
+  margin-bottom: 5px;
+}
+
+button {
+  width: 90px;
+  margin-right: 5px;
+}
+
+button.delete {
+  background-color: pink;
+}
+
+button.publish {
+  background-color: lightgreen;
+}
+
+button.unpublish {
+  background-color: yellow;
 }
