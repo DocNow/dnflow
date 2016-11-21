@@ -29,9 +29,6 @@ var Search = React.createClass({
       link = this.props.text;
     }
 
-    var t = $.format.date(new Date(this.props.created), 'yyyy-MM-dd HH:mm:ss');
-    var p = $.format.date(new Date(this.props.published), 'yyyy-MM-dd HH:mm:ss');
-
     if (this.props.canModify) {
       if (this.props.published) {
         var publishButton =
