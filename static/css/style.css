@@ -49,6 +49,7 @@ td {
 button {
   width: 90px;
   margin-right: 5px;
+  outline: none;
 }
 
 button.delete {
