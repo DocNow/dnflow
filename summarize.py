@@ -12,6 +12,8 @@ import logging
 import math
 import os
 import time
+import zipfile
+import tempfile
 from urllib.parse import urlparse
 
 import imagehash
@@ -22,8 +24,9 @@ import networkx as nx
 from PIL import Image
 from flask.config import Config
 import requests
-
 import twarc
+
+import json2csv
 
 
 config = Config(os.path.dirname(__file__))
@@ -636,6 +639,32 @@ class ExtractTweetIds(EventfulTask):
                 fh.write(tweet['id_str'] + "\n")
 
 
+class BagIt(EventfulTask):
+    search = luigi.DictParameter()
+
+    def requires(self):
+        return PopulateRedis(search=self.search)
+
+    def output(self):
+        date_path = self.search['date_path']
+        zip_fn = "data/%s/%s.zip" % (date_path, date_path)
+        return luigi.LocalTarget(zip_fn)
+
+    def run(self):
+        data_dir = 'data/%s/' % self.search['date_path']
+        ziph = tempfile.NamedTemporaryFile(mode='wb')
+        z = zipfile.ZipFile(ziph, 'w')
+        for root, dirs, files in os.walk(data_dir):
+            for fn in files:
+                if fn == "tweets.json": 
+                    continue
+                src = str(os.path.join(root, fn))
+                dst = src.replace("data/", "") 
+                z.write(src, dst)
+        z.close()
+        os.rename(ziph.name, self.output().path)
+
+
 class CountRetweets(EventfulTask):
     search = luigi.DictParameter()
 
@@ -695,6 +724,25 @@ class CountRetweets(EventfulTask):
             for rt in retweets:
                 writer.writerow({'tweet_id': rt.id, 'count': rt.count})
 
+
+class CreateCsv(EventfulTask):
+    search = luigi.DictParameter()
+
+    def requires(self):
+        return FetchTweets(search=self.search)
+
+    def output(self):
+        fname = self.input().fn.replace('tweets.json', 'tweets.csv')
+        return luigi.LocalTarget(fname)
+
+    def run(self):
+        with self.output().open('w') as fh:
+            writer = csv.writer(fh)
+            writer.writerow(json2csv.get_headings())
+            for line in self.input().open('r'):
+                tweet = json.loads(line)
+                writer.writerow(json2csv.get_row(tweet))
+
             
 class RunFlow(EventfulTask):
     date_path = time_hash()
@@ -730,3 +778,5 @@ class RunFlow(EventfulTask):
         yield PopulateRedis(search=search)
         yield MatchMedia(search=search)
         yield ExtractTweetIds(search=search)
+        yield CreateCsv(search=search)
+        yield BagIt(search=search)

@@ -204,6 +204,13 @@ def summary(date_path):
 
 @app.route('/summary/<date_path>/<path:file_name>', methods=['GET'])
 def summary_static_proxy(date_path, file_name):
+    user = session.get('twitter_user', None)
+    search = query('SELECT * FROM searches WHERE date_path = ?', [date_path],
+                   one=True)
+
+    if not search['published'] and user != search['user']:
+        abort(401)
+
     fname = '%s/%s' % (date_path, file_name)
     return send_from_directory(app.config['DATA_DIR'], fname)
 

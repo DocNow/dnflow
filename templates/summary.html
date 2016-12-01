@@ -387,7 +387,9 @@ d3.json("/api/searches", function(e, data) {
     <div id="rawdata" class="item">
         <h3>Raw data</h3>
         <p>
-        Download the raw data behind these charts.
+        Download the raw data behind these charts as 
+        <a href="{{ search.date_path }}.zip">one complete package</a>
+        or pick them out individually:
         </p>
         <ul>
             <li><a href="count-domains.csv">count-domains.csv</a></li>
@@ -398,6 +400,7 @@ d3.json("/api/searches", function(e, data) {
             <li><a href="count-urls.csv">count-urls.csv</a></li>
             <li><a href="follow-ratio.csv">follow-ratio.csv</a></li>
             <li><a href="retweets.csv">retweets.csv</a></li>
+            <li><a href="tweets.csv">tweets.csv</a></li>
             <li><a href="tweet-ids.txt">tweet-ids.txt</a></li>
         </ul>
     </div>
