@@ -4,6 +4,7 @@ import sqlite3
 from flask_oauthlib.client import OAuth
 from flask import g, jsonify, request, redirect, session, flash, make_response
 from flask import Flask, render_template, url_for, send_from_directory, abort
+from flask import Response
 import pandas as pd
 import redis
 from rq import Queue
@@ -224,12 +225,17 @@ def summary_compare(search_id):
                            compare_ids=compare_ids)
 
 
+@app.route('/trend/', methods=['GET'])
+def trend():
+    return render_template('trend.html')
+
+
 @app.route('/feed/')
 def feed():
     searches = query(
         '''
-        SELECT * FROM searches 
-        WHERE published IS NOT NULL 
+        SELECT * FROM searches
+        WHERE published IS NOT NULL
         ORDER BY id DESC
         ''', json=True)
     site_url = 'http://' + app.config['HOSTNAME']
@@ -241,7 +247,7 @@ def feed():
     searches = list(map(add_url, searches))
     resp = make_response(
         render_template(
-            'feed.xml', 
+            'feed.xml',
             updated=searches[0]['created'],
             site_url=site_url,
             feed_url=feed_url,
@@ -261,12 +267,40 @@ def robots():
 
 # api routes for getting data
 
+@app.route('/api/trend/<int:woeid>/', methods=['GET'])
+def api_trend(woeid):
+    q = '''
+        SELECT t.ts_fetch AS ts_fetch, t.name AS trend,
+            t.tweet_volume AS vol, tl.name AS loc
+        FROM trends AS t, trend_locations AS tl
+        WHERE tl.woeid = t.woeid
+            AND t.tweet_volume > 0
+            AND t.woeid = ?
+            AND t.ts_fetch >= DATETIME('now', '-1 day')
+        ORDER BY t.id DESC
+        '''
+    # FIXME: sqlite hard-coded
+    con = 'sqlite:///%s' % app.config['DATABASE']
+    params = [woeid]
+    df = pd.read_sql_query(sql=q, con=con, params=params)
+    # round timestamps to nearest minute; smoothes out second diffs
+    df['ts_index'] = pd.DatetimeIndex(df['ts_fetch']).round('1min')
+    # pivot into time-indexed rows w/trends as cols
+    df = df.pivot(index='ts_index', columns='trend', values='vol')
+
+    def generate():
+        for row in df.to_csv():
+            yield(row)
+    return Response(generate(), mimetype='text/csv')
+
+
+
 @app.route('/api/searches/', methods=['GET'])
 def api_searches():
     user = session.get('twitter_user', None)
     q = '''
-        SELECT * 
-        FROM searches 
+        SELECT *
+        FROM searches
         WHERE user = ?
           OR published IS NOT NULL
         ORDER BY id DESC
