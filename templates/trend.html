@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+
+{% block style_css_extra %}
+body {
+  font: 10px sans-serif;
+}
+
+.axis path,
+.axis line {
+  fill: none;
+  stroke: #000;
+  shape-rendering: crispEdges;
+}
+
+.area {
+  fill: lightsteelblue;
+}
+
+.line {
+  fill: none;
+  stroke: steelblue;
+  stroke-width: 1.5px;
+}
+
+.dot {
+  fill: white;
+  stroke: steelblue;
+  stroke-width: 1.5px;
+}
+{% endblock style_css_extra %}
+
+{% block javascript_extra %}
+<script src="https://d3js.org/d3.v4.min.js" charset="utf-8"></script>
+
+<script>
+var woeid = window.location.pathname.split('/')[2];
+
+d3.json('/api/trend_location/' + woeid + '/', function(loc) {
+    trend_location = loc[0];
+    var t = "Trends for " + trend_location.name;
+    if(trend_location.country != "") {
+      t = t + " (" + trend_location.country + ")";
+    }
+    d3.select('#name-block')
+      .text(t);
+});
+
+var margin = {top: 40, right: 40, bottom: 40, left: 60},
+    width = 960 - margin.left - margin.right,
+    height = 700 - margin.top - margin.bottom;
+
+var parseTime = d3.utcParse("%Y-%m-%d %H:%M:%S");
+
+var x = d3.scaleTime()
+    .range([0, width]);
+
+var y = d3.scaleLog()
+    .range([height, 0]);
+
+var color = d3.scaleOrdinal(d3.schemeCategory20c);
+
+var svg = d3.select("body").append("svg")
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom)
+  .append("g")
+    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+var line = d3.svg.line()
+  .defined(function(d) { return d; })
+  .x(function(d) { return x(d.ts); })
+  .y(function(d) { return y(d.vol); });
+
+var dataset;
+
+d3.csv('/api/trend/' + woeid + '/', function(data) {
+  data.forEach(function(d) {
+    d.ts = parseTime(d.ts);
+    d.vol = +d.vol;
+  });
+
+  // reset x and y scales to proper extents
+  x.domain(d3.extent(data, function(d) { return d.ts; }));
+  y.domain([9000, d3.max(data, function(d) { return d.vol; })]);
+  var dataNest = d3.nest()
+    .key(function(d) { return d.name; })
+    .entries(data);
+
+  color.domain(dataNest.map(function(d) { return d.key; }));
+
+  dataNest.forEach(function(d) {
+    svg.append("path")
+      .attr("class", "line")
+      .attr("d", line(d.values))
+      .style("stroke", color(d.key))
+      .style("stroke-width", 5)
+      .style("stroke-opacity", 0.8)
+      .append("svg:title")
+        .text(d.key);
+  });
+
+  dataset = dataNest;
+
+  svg.append("g")
+      .attr("class", "axis axis--x")
+      .attr("transform", "translate(0," + height + ")")
+      .call(d3.axisBottom().scale(x));
+
+  svg.append("g")
+      .attr("class", "axis axis--y")
+      .call(d3.axisLeft().scale(y).tickFormat(function (d) {
+        return y.tickFormat(7, d3.format(",d"))(d)
+      }));
+
+  svg.selectAll(".dot")
+      .data(data.filter(function(d) { return d; }))
+    .enter().append("circle")
+      .attr("class", "dot")
+      .attr("cx", line.x())
+      .attr("cy", line.y())
+      .attr("r", 2)
+      .style("stroke-opacity", 0.5);
+})
+
+</script>
+{% endblock javascript_extra %}
+
+{% block content %}
+<h2 id="name-block">Trends</h2>
+{% endblock content %}

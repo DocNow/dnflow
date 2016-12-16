@@ -4,6 +4,7 @@ import sqlite3
 from flask_oauthlib.client import OAuth
 from flask import g, jsonify, request, redirect, session, flash, make_response
 from flask import Flask, render_template, url_for, send_from_directory, abort
+from flask import Response
 import pandas as pd
 import redis
 from rq import Queue
@@ -224,12 +225,17 @@ def summary_compare(search_id):
                            compare_ids=compare_ids)
 
 
+@app.route('/trend/<int:woeid>/', methods=['GET'])
+def trend(woeid):
+    return render_template('trend.html', woeid=woeid)
+
+
 @app.route('/feed/')
 def feed():
     searches = query(
         '''
-        SELECT * FROM searches 
-        WHERE published IS NOT NULL 
+        SELECT * FROM searches
+        WHERE published IS NOT NULL
         ORDER BY id DESC
         ''', json=True)
     site_url = 'http://' + app.config['HOSTNAME']
@@ -241,7 +247,7 @@ def feed():
     searches = list(map(add_url, searches))
     resp = make_response(
         render_template(
-            'feed.xml', 
+            'feed.xml',
             updated=searches[0]['created'],
             site_url=site_url,
             feed_url=feed_url,
@@ -261,12 +267,46 @@ def robots():
 
 # api routes for getting data
 
+@app.route('/api/trend/<int:woeid>/', methods=['GET'])
+def api_trend(woeid):
+    q = '''
+        SELECT ts_fetch AS ts, name, tweet_volume AS vol
+        FROM trends
+        WHERE woeid = ?
+            AND tweet_volume > 0
+            AND ts_fetch >= DATETIME('now', '-6 hours')
+        ORDER BY ts_fetch
+        '''
+    # FIXME: sqlite hard-coded
+    con = 'sqlite:///%s' % app.config['DATABASE']
+    params = [woeid]
+    df = pd.read_sql_query(sql=q, con=con, params=params)
+    # round timestamps to nearest minute; smoothes out second diffs
+    df['ts'] = pd.DatetimeIndex(df['ts']).round('1min')
+
+    def generate():
+        for row in df[['ts', 'name', 'vol']].to_csv(index=False):
+            yield(row)
+    return Response(generate(), mimetype='text/plain')
+
+
+@app.route('/api/trend_location/<int:woeid>/', methods=['GET'])
+def api_trend_location(woeid):
+    q = '''
+        SELECT country_code, url, name, country, type_name
+        FROM trend_locations
+        WHERE woeid = ?
+        '''
+    location = query(q, [woeid], json=True)
+    return jsonify(location)
+    
+
 @app.route('/api/searches/', methods=['GET'])
 def api_searches():
     user = session.get('twitter_user', None)
     q = '''
-        SELECT * 
-        FROM searches 
+        SELECT *
+        FROM searches
         WHERE user = ?
           OR published IS NOT NULL
         ORDER BY id DESC
