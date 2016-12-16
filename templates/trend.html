@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
 {% block style_css_extra %}
-body {
+svg {
   font: 10px sans-serif;
 }
 
@@ -92,8 +92,18 @@ d3.csv('/api/trend/' + woeid + '/', function(data) {
       .attr("class", "line")
       .attr("d", line(d.values))
       .style("stroke", color(d.key))
-      .style("stroke-width", 5)
-      .style("stroke-opacity", 0.8)
+      .style("stroke-width", 7)
+      .style("stroke-opacity", 0.6)
+      .on("mouseover", function() {
+        d3.select(this)
+          .style("stroke-width", 9)
+          .style("stroke-opacity", 1.0);
+      })
+      .on("mouseout", function() {
+        d3.select(this)
+          .style("stroke-width", 7)
+          .style("stroke-opacity", 0.6);
+      })
       .append("svg:title")
         .text(d.key);
   });
@@ -118,7 +128,9 @@ d3.csv('/api/trend/' + woeid + '/', function(data) {
       .attr("cx", line.x())
       .attr("cy", line.y())
       .attr("r", 2)
-      .style("stroke-opacity", 0.5);
+      .style("stroke", function(d) { return color(d.key); })
+      .style("stroke-width", 0.3)
+      .style("opacity", 0.7);
 })
 
 </script>

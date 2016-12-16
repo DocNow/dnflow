@@ -274,7 +274,7 @@ def api_trend(woeid):
         FROM trends
         WHERE woeid = ?
             AND tweet_volume > 0
-            AND ts_fetch >= DATETIME('now', '-6 hours')
+            AND ts_fetch >= DATETIME('now', '-12 hours')
         ORDER BY ts_fetch
         '''
     # FIXME: sqlite hard-coded
