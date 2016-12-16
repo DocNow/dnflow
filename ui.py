@@ -299,7 +299,7 @@ def api_trend_location(woeid):
         '''
     location = query(q, [woeid], json=True)
     return jsonify(location)
-    
+
 
 @app.route('/api/searches/', methods=['GET'])
 def api_searches():
