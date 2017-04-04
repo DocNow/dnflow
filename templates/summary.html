@@ -66,6 +66,18 @@
   margin: 10px;
 }
 
+#sample {
+  display: inline;
+}
+
+#sample div {
+  float: left;
+  height: 250px;
+  margin: 10px;
+}
+
+
+
 {% endblock style_css_extra %}
 
 {% block javascript_extra %}
@@ -144,6 +156,18 @@ twttr.ready(function() {
           twttr.widgets.createTweet(id, document.getElementById('tweet-' + id), {"cards": "hidden"});
           if (i > 10) break;
       };
+  });
+});
+
+twttr.ready(function() {
+  d3.csv("sample.csv").header('Pragma','no-cache').get(function(e, data) {
+        if (e) return console.warn(e);
+        for (var i in data) {
+          var id = data[i].id;
+          $("#sample").append('<div id="tweet-' + id + '"></div>');
+          twttr.widgets.createTweet(id, document.getElementById('tweet-' + id), {"cards": "hidden"});
+          if (i > 1000) break;
+        };
   });
 });
 
@@ -401,6 +425,7 @@ d3.json("/api/searches", function(e, data) {
             <li><a href="follow-ratio.csv">follow-ratio.csv</a></li>
             <li><a href="retweets.csv">retweets.csv</a></li>
             <li><a href="tweets.csv">tweets.csv</a></li>
+            <li><a href="sample.csv">sample.csv</a></li>
             <li><a href="tweet-ids.txt">tweet-ids.txt</a></li>
         </ul>
     </div>
@@ -420,4 +445,14 @@ d3.json("/api/searches", function(e, data) {
         <h3>Matching images</h3>
     </div>
 </div>
+
+<div id="sample" class="row">
+  <h3> Sample </h3>
+</div>
+
+<form action="/summary/{{ search.date_path }}/sample/" method="POST">
+<h3>Create a sample of tweets</h3>
+Sample size: <input type="number" name="sample_size" value="10">
+<input type="submit" value="Submit">
+</form>
 {% endblock content %}

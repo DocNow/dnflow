@@ -7,8 +7,15 @@ from flask import Flask, render_template, url_for, send_from_directory, abort
 import pandas as pd
 import redis
 from rq import Queue
-
+import numpy as np 
+from sampler import sampler
 from queue_tasks import run_flow
+
+import json
+import csv
+import numpy as np
+import json2csv
+from numpy.random import shuffle
 
 # configure application
 
@@ -32,7 +39,7 @@ logging.getLogger().setLevel(logging.DEBUG)
 
 oauth = OAuth()
 twitter = oauth.remote_app('twitter',
-    base_url='https://api.twitter.com/1/',
+    base_url='https://api.twitter.com/1.1/',
     request_token_url='https://api.twitter.com/oauth/request_token',
     access_token_url='https://api.twitter.com/oauth/access_token',
     authorize_url='https://api.twitter.com/oauth/authenticate',
@@ -222,6 +229,36 @@ def summary_compare(search_id):
     compare_ids = request.args.getlist('id')
     return render_template('summary_compare.html', search=search,
                            compare_ids=compare_ids)
+
+
+@app.route('/summary/<date_path>/sample/', methods=['POST'])
+def sample(date_path):
+    try:
+        sample_size = int(request.form.get('sample_size', None))
+    except ValueError:
+        return redirect(url_for('summary', date_path=date_path))
+    #s = sampler(sample_size,date_path)
+    #s.resample()
+    with open('data/%s/summary.json' % date_path,'r') as summary_file:    
+        summary = json.load(summary_file)
+    num_tweets = summary['num_tweets']
+    index = np.arange(num_tweets)
+    shuffle(index)
+    index = index[0:sample_size]
+    counter = 0
+    with open('data/%s/sample.csv' % date_path, 'w') as sample_file:
+        writer = csv.writer(sample_file) 
+        writer.writerow(json2csv.get_headings())
+        with open('data/%s/tweets.json' % date_path,'r') as tweets_file:
+            for line in tweets_file:
+                tweet = json.loads(line)
+                if counter in index:
+                    writer.writerow(json2csv.get_row(tweet))
+                counter += 1
+    return redirect(url_for('summary', date_path=date_path))
+        #print('data/%s/sample.csv' % date_path)
+        #return app.send_static_file('data/%s/sample.csv' % date_path)
+        #return send_from_directory('data/%s/' % date_path, 'sample.csv')
 
 
 @app.route('/feed/')
