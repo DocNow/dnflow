@@ -12,9 +12,10 @@ import logging
 import math
 import os
 import time
-import zipfile
+import zipfile 
 import tempfile
 from urllib.parse import urlparse
+import numpy as np
 
 import imagehash
 from jinja2 import Environment, PackageLoader
@@ -625,7 +626,7 @@ class PopulateRedis(EventfulTask):
 class ExtractTweetIds(EventfulTask):
     search = luigi.DictParameter()
 
-    def requires(self):
+    def requires(self): 
         return FetchTweets(search=self.search)
 
     def output(self):
@@ -743,7 +744,33 @@ class CreateCsv(EventfulTask):
                 tweet = json.loads(line)
                 writer.writerow(json2csv.get_row(tweet))
 
-            
+class Sampler(EventfulTask):
+    search = luigi.DictParameter()
+    
+    def requires(self):
+        return FetchTweets(search=self.search)
+
+    def output(self):
+        fname = self.input().fn.replace('tweets.json', 'sample.csv')
+        return luigi.LocalTarget(fname)
+
+    def run(self):
+        sample_size = 10
+        #sample_size = self.search['sample_size']
+        count = self.search['count']
+        index = np.random.random_integers(0,count,sample_size)
+        counter = 0
+        with self.output().open('w') as fh:
+            writer = csv.writer(fh)
+            writer.writerow(json2csv.get_headings())
+            for line in self.input().open('r'):
+                if counter in index:
+                    tweet = json.loads(line)
+                    writer.writerow(json2csv.get_row(tweet))
+                counter += 1
+        
+          
+
 class RunFlow(EventfulTask):
     date_path = time_hash()
     jobid = luigi.IntParameter()
@@ -779,4 +806,5 @@ class RunFlow(EventfulTask):
         yield MatchMedia(search=search)
         yield ExtractTweetIds(search=search)
         yield CreateCsv(search=search)
+        yield Sampler(search=search)
         yield BagIt(search=search)
