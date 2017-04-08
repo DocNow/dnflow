@@ -218,7 +218,7 @@ def summary_static_proxy(date_path, file_name):
         abort(401)
 
     fname = '%s/%s' % (date_path, file_name)
-    return send_from_directory(app.config['DATA_DIR'], fname)
+    return send_from_directory(app.config['DATA_DIR'], fname, cache_timeout=-1)
 
 
 @app.route('/summary/<int:search_id>/compare', methods=['GET'])
@@ -236,14 +236,11 @@ def sample(date_path):
         sample_size = int(request.form.get('sample_size', None))
     except ValueError:
         return redirect(url_for('summary', date_path=date_path))
-    #s = sampler(sample_size,date_path)
-    #s.resample()
-    with open('data/%s/summary.json' % date_path,'r') as summary_file:    
-        summary = json.load(summary_file)
+    summary = json.load(open('data/%s/summary.json' % date_path, 'r'))
     num_tweets = summary['num_tweets']
-    index = np.arange(num_tweets)
-    shuffle(index)
-    index = index[0:sample_size]
+    tweet_index = np.arange(num_tweets)
+    shuffle(tweet_index)
+    tweet_index = tweet_index[0:sample_size]
     counter = 0
     with open('data/%s/sample.csv' % date_path, 'w') as sample_file:
         writer = csv.writer(sample_file) 
@@ -251,13 +248,10 @@ def sample(date_path):
         with open('data/%s/tweets.json' % date_path,'r') as tweets_file:
             for line in tweets_file:
                 tweet = json.loads(line)
-                if counter in index:
+                if counter in tweet_index:
                     writer.writerow(json2csv.get_row(tweet))
                 counter += 1
     return redirect(url_for('summary', date_path=date_path))
-        #print('data/%s/sample.csv' % date_path)
-        #return app.send_static_file('data/%s/sample.csv' % date_path)
-        #return send_from_directory('data/%s/' % date_path, 'sample.csv')
 
 
 @app.route('/feed/')
